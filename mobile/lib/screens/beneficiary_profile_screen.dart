@@ -324,64 +324,88 @@ class _BeneficiaryProfileScreenState extends State<BeneficiaryProfileScreen> {
                       const SizedBox(height: AppSpacing.md),
                       Divider(color: tokens.outline, height: 1),
                       const SizedBox(height: AppSpacing.sm),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.phone_outlined,
-                            size: 18,
-                            color: tokens.inkMuted,
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: Text(
-                              '${strings.phoneLabel}: ${_phoneRevealed ? revealedPhone : maskedPhone}',
-                              style: AppTypography.tabular(
-                                AppTypography.body(tokens.ink),
+                      SizedBox(
+                        width: double.infinity,
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.xs,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.phone_outlined,
+                                  size: 18,
+                                  color: tokens.inkMuted,
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Flexible(
+                                  child: Text(
+                                    '${strings.phoneLabel}: ${_phoneRevealed ? revealedPhone : maskedPhone}',
+                                    style: AppTypography.tabular(
+                                      AppTypography.body(tokens.ink),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            TextAction(
+                              label: _phoneRevealed
+                                  ? strings.hideSensitiveAction
+                                  : strings.tapToRevealAction,
+                              onPressed: () => _toggleSensitiveField(
+                                currentlyRevealed: _phoneRevealed,
+                                setter: (v) => _phoneRevealed = v,
                               ),
                             ),
-                          ),
-                          TextAction(
-                            label: _phoneRevealed
-                                ? strings.hideSensitiveAction
-                                : strings.tapToRevealAction,
-                            onPressed: () => _toggleSensitiveField(
-                              currentlyRevealed: _phoneRevealed,
-                              setter: (v) => _phoneRevealed = v,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                     if (hasExternalId) ...[
                       const SizedBox(height: AppSpacing.md),
                       Divider(color: tokens.outline, height: 1),
                       const SizedBox(height: AppSpacing.sm),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.badge_outlined,
-                            size: 18,
-                            color: tokens.inkMuted,
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: Text(
-                              '${strings.externalIdLabel}: ${_externalIdRevealed ? revealedExternalId : maskedExternalId}',
-                              style: AppTypography.tabular(
-                                AppTypography.body(tokens.ink),
+                      SizedBox(
+                        width: double.infinity,
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.xs,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.badge_outlined,
+                                  size: 18,
+                                  color: tokens.inkMuted,
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Flexible(
+                                  child: Text(
+                                    '${strings.externalIdLabel}: ${_externalIdRevealed ? revealedExternalId : maskedExternalId}',
+                                    style: AppTypography.tabular(
+                                      AppTypography.body(tokens.ink),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            TextAction(
+                              label: _externalIdRevealed
+                                  ? strings.hideSensitiveAction
+                                  : strings.tapToRevealAction,
+                              onPressed: () => _toggleSensitiveField(
+                                currentlyRevealed: _externalIdRevealed,
+                                setter: (v) => _externalIdRevealed = v,
                               ),
                             ),
-                          ),
-                          TextAction(
-                            label: _externalIdRevealed
-                                ? strings.hideSensitiveAction
-                                : strings.tapToRevealAction,
-                            onPressed: () => _toggleSensitiveField(
-                              currentlyRevealed: _externalIdRevealed,
-                              setter: (v) => _externalIdRevealed = v,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ],

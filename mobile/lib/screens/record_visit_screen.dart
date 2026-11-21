@@ -830,33 +830,37 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
                     const SizedBox(height: AppSpacing.sm),
                     Center(
                       key: const ValueKey('status_pill_slot'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _recording
-                              ? AppColors.riskBg
-                              : ((_uploading || _playingQuestion)
-                                  ? AppColors.primaryTint
-                                  : AppColors.surfaceSubtle),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: _recording
-                                ? AppColors.riskBorder.withValues(alpha: 0.4)
-                                : AppColors.border,
+                      child: Semantics(
+                        liveRegion: true,
+                        label: statusLabel,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 7,
                           ),
-                        ),
-                        child: Text(
-                          statusLabel,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
+                          decoration: BoxDecoration(
                             color: _recording
-                                ? AppColors.riskText
+                                ? AppColors.riskBg
                                 : ((_uploading || _playingQuestion)
-                                    ? AppColors.primaryDark
-                                    : AppColors.inkSecondary),
+                                    ? AppColors.primaryTint
+                                    : AppColors.surfaceSubtle),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: _recording
+                                  ? AppColors.riskBorder.withValues(alpha: 0.4)
+                                  : AppColors.border,
+                            ),
+                          ),
+                          child: Text(
+                            statusLabel,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: _recording
+                                  ? AppColors.riskText
+                                  : ((_uploading || _playingQuestion)
+                                      ? AppColors.primaryDark
+                                      : AppColors.inkSecondary),
+                            ),
                           ),
                         ),
                       ),
@@ -978,24 +982,50 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
       ),
     );
 
+    final strings = widget.appState.strings;
+    final micSemanticLabel = _autoListening
+        ? strings.tapWhenDone
+        : (_recording ? strings.releaseToSend : strings.holdToSpeak);
+
     if (_autoListening) {
-      return GestureDetector(
-        key: const ValueKey('stop_followup_button'),
-        onTap: () => _stopAndUpload(checkMinHold: false),
-        child: circle,
+      return Semantics(
+        container: true,
+        button: true,
+        enabled: true,
+        label: micSemanticLabel,
+        excludeSemantics: true,
+        child: GestureDetector(
+          key: const ValueKey('stop_followup_button'),
+          onTap: () => _stopAndUpload(checkMinHold: false),
+          child: circle,
+        ),
       );
     }
 
     if (_uploading || _playingQuestion) {
-      return IgnorePointer(child: circle);
+      return Semantics(
+        container: true,
+        button: true,
+        enabled: false,
+        label: _uploading ? strings.statusProcessing : strings.statusPlayingQuestion,
+        excludeSemantics: true,
+        child: IgnorePointer(child: circle),
+      );
     }
 
-    return Listener(
-      key: const ValueKey('push_to_talk_button'),
-      onPointerDown: (_) => _startHoldRecording(),
-      onPointerUp: (_) => _stopAndUpload(checkMinHold: true),
-      onPointerCancel: (_) => _stopAndUpload(checkMinHold: true),
-      child: circle,
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: true,
+      label: micSemanticLabel,
+      excludeSemantics: true,
+      child: Listener(
+        key: const ValueKey('push_to_talk_button'),
+        onPointerDown: (_) => _startHoldRecording(),
+        onPointerUp: (_) => _stopAndUpload(checkMinHold: true),
+        onPointerCancel: (_) => _stopAndUpload(checkMinHold: true),
+        child: circle,
+      ),
     );
   }
 }
