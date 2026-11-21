@@ -21,8 +21,16 @@ class FakeAshaApiClient implements AshaApiClient {
   ApiException? visitTypesError;
   ApiException? suggestedPurposeError;
   ApiException? beneficiariesError;
+  ApiException? createBeneficiaryError;
+  ApiException? extractBeneficiaryError;
+  ApiException? duplicateCheckError;
+  ApiException? profileVisitsError;
   ApiException? uploadError;
   ApiException? savedVisitsError;
+
+  BeneficiaryAudioExtractResult? nextBeneficiaryAudioResult;
+  final List<DuplicateMatchItem> fakeDuplicateMatches = [];
+  final Map<String, BeneficiaryProfileVisits> profileVisitsById = {};
 
   List<Beneficiary> beneficiaries = const [
     Beneficiary(id: '1042', label: 'Baby of Sunita (synthetic)'),
@@ -101,6 +109,105 @@ class FakeAshaApiClient implements AshaApiClient {
   Future<List<Beneficiary>> getBeneficiaries(String ashaId) async {
     if (beneficiariesError != null) throw beneficiariesError!;
     return beneficiaries;
+  }
+
+  @override
+  Future<Beneficiary> createBeneficiary(BeneficiaryCreatePayload payload) async {
+    if (createBeneficiaryError != null) throw createBeneficiaryError!;
+    if (!payload.consentGiven) {
+      throw const ApiException('CONSENT_REQUIRED', 'Consent is required.', 400);
+    }
+    final nextCode = payload.localCode ?? '${1058 + beneficiaries.length}';
+    final created = Beneficiary(
+      id: nextCode,
+      label: payload.fullName.trim(),
+      uuid: payload.beneficiaryUuid ?? 'ben-uuid-$nextCode',
+      beneficiaryType: payload.beneficiaryType,
+      sex: payload.sex,
+      dob: payload.dob,
+      dobIsEstimated: payload.dobIsEstimated,
+      area: payload.areaNote ?? payload.areaId,
+      motherId: payload.motherId,
+      phoneMasked: Beneficiary.maskPhone(payload.phone),
+      phoneLocal: payload.phone,
+      consentRecorded: true,
+    );
+    beneficiaries = [...beneficiaries, created];
+    return created;
+  }
+
+  @override
+  Future<Beneficiary> getBeneficiaryProfile(String beneficiaryId) async {
+    return beneficiaries.firstWhere(
+      (b) => b.id == beneficiaryId || b.uuid == beneficiaryId,
+      orElse: () => Beneficiary(id: beneficiaryId, label: 'Unknown'),
+    );
+  }
+
+  @override
+  Future<BeneficiaryProfileVisits> getBeneficiaryVisits(
+    String beneficiaryId,
+  ) async {
+    if (profileVisitsError != null) throw profileVisitsError!;
+    return profileVisitsById[beneficiaryId] ??
+        BeneficiaryProfileVisits(
+          beneficiaryId: beneficiaryId,
+          visits: savedVisits
+              .where((v) => v.beneficiaryId == beneficiaryId)
+              .toList(),
+        );
+  }
+
+  @override
+  Future<List<DuplicateMatchItem>> checkDuplicateBeneficiary({
+    required String workerId,
+    String? areaId,
+    required String fullName,
+    String? dob,
+    String? phone,
+  }) async {
+    if (duplicateCheckError != null) throw duplicateCheckError!;
+    if (fakeDuplicateMatches.isNotEmpty) {
+      return List.of(fakeDuplicateMatches);
+    }
+    final q = fullName.trim().toLowerCase();
+    return beneficiaries
+        .where((b) => b.label.toLowerCase().contains(q) && q.isNotEmpty)
+        .map(
+          (b) => DuplicateMatchItem(
+            beneficiaryId: b.uuid ?? b.id,
+            localCode: b.id,
+            fullName: b.label,
+            dob: b.dob,
+            score: 0.9,
+            reasons: const ['similar_name'],
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<BeneficiaryAudioExtractResult> extractBeneficiaryFromAudio({
+    required String filePath,
+    required String language,
+    required String workerId,
+    String? areaId,
+  }) async {
+    if (extractBeneficiaryError != null) throw extractBeneficiaryError!;
+    return nextBeneficiaryAudioResult ??
+        const BeneficiaryAudioExtractResult(
+          transcript: 'Naya beneficiary, Sunita, 26 saal, pregnant, 5 mahine, Rampur',
+          draft: BeneficiarySpeechDraft(
+            fullName: 'Sunita',
+            beneficiaryType: 'pregnant_woman',
+            sex: 'female',
+            ageYears: 26,
+            dob: '2000-11-22',
+            dobIsEstimated: true,
+            pregnancyMonths: 5,
+            areaNote: 'Rampur',
+          ),
+        );
   }
 
   @override
@@ -713,6 +820,11 @@ class FakeLocalDbService implements LocalDbService {
   Future<List<AuditLogEntry>> getAuditLogs({String? entityId}) async {
     if (entityId == null) return List.of(auditLogV2);
     return auditLogV2.where((a) => a.entityId == entityId).toList();
+  }
+
+  @override
+  Future<void> recordAuditLog(AuditLogEntry entry) async {
+    auditLogV2.add(entry);
   }
 
   @override

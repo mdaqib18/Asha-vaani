@@ -147,6 +147,7 @@ abstract class LocalDbService {
     String? key,
   });
   Future<List<AuditLogEntry>> getAuditLogs({String? entityId});
+  Future<void> recordAuditLog(AuditLogEntry entry);
 
   Future<void> enqueueSyncV2(SyncQueueEntry entry);
   Future<List<SyncQueueEntry>> getSyncQueueV2();
@@ -880,6 +881,16 @@ class SqfliteLocalDbService implements LocalDbService {
       orderBy: 'at ASC',
     );
     return rows.map(AuditLogEntry.fromMap).toList();
+  }
+
+  @override
+  Future<void> recordAuditLog(AuditLogEntry entry) async {
+    final db = await _open();
+    await db.insert(
+      'audit_log',
+      entry.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   @override

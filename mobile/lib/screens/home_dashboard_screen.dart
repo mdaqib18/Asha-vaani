@@ -6,6 +6,7 @@ import '../services/api_client.dart';
 import '../state/app_state.dart';
 import '../ui/ui.dart';
 import '../widgets/language_toggle.dart';
+import 'add_beneficiary_screen.dart';
 import 'saved_visits_screen.dart';
 import 'supervisor_flagged_screen.dart';
 import 'visit_purpose_picker_screen.dart';
@@ -92,6 +93,15 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       }
     }
 
+    final localV2 = await widget.appState.localDb.getBeneficiariesV2(ashaId);
+    final seenCodes = beneficiaries.map((b) => b.id).toSet();
+    final extraLocal = localV2
+        .where((r) => !r.id.startsWith('legacy_') && !seenCodes.contains(r.localCode))
+        .map((r) => Beneficiary.fromV2Record(r, localOnly: true));
+    if (extraLocal.isNotEmpty) {
+      beneficiaries = [...beneficiaries, ...extraLocal];
+    }
+
     if (error == null) {
       try {
         visits = await widget.appState.api.getSavedVisits(ashaId);
@@ -127,6 +137,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
         builder: (_) => VisitPurposePickerScreen(
           appState: widget.appState,
           beneficiary: beneficiary,
+          beneficiaryType: beneficiary.beneficiaryType,
+          dobIso: beneficiary.dob,
         ),
       ),
     );
@@ -367,9 +379,19 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               icon: Icons.event_available_outlined,
               title: strings.noVisitsDueTitle,
               message: strings.noVisitsDueMessage,
-              actionLabel: strings.viewBeneficiariesAction,
-              actionIcon: Icons.people_outline_rounded,
-              onAction: () => widget.onSelectTab(1),
+              actionLabel: strings.addBeneficiaryAction,
+              actionIcon: Icons.person_add_alt_1_outlined,
+              onAction: () async {
+                await Navigator.of(context).push<Beneficiary>(
+                  MaterialPageRoute<Beneficiary>(
+                    builder: (_) => AddBeneficiaryScreen(
+                      appState: widget.appState,
+                      existingBeneficiaries: _beneficiaries,
+                    ),
+                  ),
+                );
+                await _load();
+              },
             )
           else
             ...dueList.map((beneficiary) {

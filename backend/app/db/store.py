@@ -59,6 +59,9 @@ class VisitStore:
     """Thread-safe SQLite store for visits, audio clips, and sync results."""
 
     def __init__(self, database_url: str) -> None:
+        self.database_url = database_url
+        self._v2_engine: object | None = None
+        self._v2_repo: object | None = None
         target = _resolve_sqlite_target(database_url)
         self._conn = sqlite3.connect(target, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
@@ -105,6 +108,10 @@ class VisitStore:
     def close(self) -> None:
         with self._lock:
             self._conn.close()
+        if self._v2_engine is not None and hasattr(self._v2_engine, "dispose"):
+            self._v2_engine.dispose()
+            self._v2_engine = None
+            self._v2_repo = None
 
     def _row_to_session(self, row: sqlite3.Row) -> StoredSession:
         return StoredSession(

@@ -29,6 +29,22 @@ abstract class AshaApiClient {
     String? spokenHint,
   });
   Future<List<Beneficiary>> getBeneficiaries(String ashaId);
+  Future<Beneficiary> createBeneficiary(BeneficiaryCreatePayload payload);
+  Future<Beneficiary> getBeneficiaryProfile(String beneficiaryId);
+  Future<BeneficiaryProfileVisits> getBeneficiaryVisits(String beneficiaryId);
+  Future<List<DuplicateMatchItem>> checkDuplicateBeneficiary({
+    required String workerId,
+    String? areaId,
+    required String fullName,
+    String? dob,
+    String? phone,
+  });
+  Future<BeneficiaryAudioExtractResult> extractBeneficiaryFromAudio({
+    required String filePath,
+    required String language,
+    required String workerId,
+    String? areaId,
+  });
   Future<VisitTurnResponse> uploadVisitAudio({
     required String filePath,
     required String language,
@@ -191,6 +207,97 @@ class DioAshaApiClient implements AshaApiClient {
           .whereType<Map<String, dynamic>>()
           .map(Beneficiary.fromJson)
           .toList();
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  @override
+  Future<Beneficiary> createBeneficiary(BeneficiaryCreatePayload payload) async {
+    try {
+      final resp = await _dio.post<Map<String, dynamic>>(
+        '/v1/beneficiaries',
+        data: payload.toJson(),
+      );
+      return Beneficiary.fromJson(resp.data ?? const {});
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  @override
+  Future<Beneficiary> getBeneficiaryProfile(String beneficiaryId) async {
+    try {
+      final resp =
+          await _dio.get<Map<String, dynamic>>('/v1/beneficiaries/$beneficiaryId');
+      return Beneficiary.fromJson(resp.data ?? const {});
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  @override
+  Future<BeneficiaryProfileVisits> getBeneficiaryVisits(
+    String beneficiaryId,
+  ) async {
+    try {
+      final resp = await _dio.get<Map<String, dynamic>>(
+        '/v1/beneficiaries/$beneficiaryId/visits',
+      );
+      return BeneficiaryProfileVisits.fromJson(resp.data ?? const {});
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  @override
+  Future<List<DuplicateMatchItem>> checkDuplicateBeneficiary({
+    required String workerId,
+    String? areaId,
+    required String fullName,
+    String? dob,
+    String? phone,
+  }) async {
+    try {
+      final resp = await _dio.post<List<dynamic>>(
+        '/v1/beneficiaries/check-duplicate',
+        data: {
+          'worker_id': workerId,
+          if (areaId != null && areaId.isNotEmpty) 'area_id': areaId,
+          'full_name': fullName,
+          if (dob != null && dob.isNotEmpty) 'dob': dob,
+          if (phone != null && phone.isNotEmpty) 'phone': phone,
+        },
+      );
+      return (resp.data ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(DuplicateMatchItem.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  @override
+  Future<BeneficiaryAudioExtractResult> extractBeneficiaryFromAudio({
+    required String filePath,
+    required String language,
+    required String workerId,
+    String? areaId,
+  }) async {
+    try {
+      final filename = filePath.split(RegExp(r'[/\\]')).last;
+      final formData = FormData.fromMap({
+        'audio': await MultipartFile.fromFile(filePath, filename: filename),
+        'language': language,
+        'worker_id': workerId,
+        if (areaId != null && areaId.isNotEmpty) 'area_id': areaId,
+      });
+      final resp = await _dio.post<Map<String, dynamic>>(
+        '/v1/beneficiaries/from-audio',
+        data: formData,
+      );
+      return BeneficiaryAudioExtractResult.fromJson(resp.data ?? const {});
     } on DioException catch (e) {
       throw _mapError(e);
     }

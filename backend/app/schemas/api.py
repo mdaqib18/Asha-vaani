@@ -182,3 +182,143 @@ class SuggestedPurposeResponse(BaseModel):
     reason: dict[str, str]
     other_codes: list[str]
     detected_purpose: DetectedPurposeOut | None = None
+
+
+class BeneficiaryCreateRequest(BaseModel):
+    """Create a new beneficiary with consent (SPEC_V2 §3.4, §9)."""
+
+    worker_id: str = "asha_001"
+    full_name: str
+    beneficiary_type: Literal[
+        "pregnant_woman",
+        "newborn",
+        "pnc_mother",
+        "child_u5",
+        "adult",
+        "other",
+    ] = "newborn"
+    sex: Literal["female", "male", "unknown"] = "unknown"
+    dob: str | None = None
+    dob_is_estimated: bool = False
+    area_id: str | None = None
+    area_note: str | None = None
+    household_id: str | None = None
+    mother_id: str | None = None
+    phone: str | None = None
+    external_id: str | None = None
+    lmp_date: str | None = None
+    pregnancy_months: int | None = None
+    consent_given: bool = False
+    consent_given_by: Literal["self", "guardian"] = "self"
+    consent_method: Literal["verbal", "signed"] = "verbal"
+    local_code: str | None = None
+    beneficiary_id: str | None = None
+
+
+class BeneficiaryPatchRequest(BaseModel):
+    """Partial editable update for an existing beneficiary."""
+
+    full_name: str | None = None
+    sex: Literal["female", "male", "unknown"] | None = None
+    dob: str | None = None
+    dob_is_estimated: bool | None = None
+    beneficiary_type: Literal[
+        "pregnant_woman",
+        "newborn",
+        "pnc_mother",
+        "child_u5",
+        "adult",
+        "other",
+    ] | None = None
+    area_id: str | None = None
+    phone: str | None = None
+    status: Literal["active", "transferred", "closed"] | None = None
+
+
+class BeneficiaryOut(BaseModel):
+    """Backwards-compatible V1+V2 beneficiary profile representation."""
+
+    id: str
+    label: str
+    uuid: str
+    local_code: str
+    full_name: str
+    beneficiary_type: str = "newborn"
+    sex: str = "unknown"
+    dob: str | None = None
+    dob_is_estimated: bool = False
+    area_id: str | None = None
+    area_name: str | None = None
+    mother_id: str | None = None
+    phone_masked: str | None = None
+    has_phone: bool = False
+    consent_id: str | None = None
+    status: str = "active"
+    risk_level: str = "none"
+    last_visit_at: str | None = None
+    next_due_at: str | None = None
+    edd_date: str | None = None
+    version: int = 1
+
+
+class DuplicateCheckRequest(BaseModel):
+    """Payload for POST /v1/beneficiaries/check-duplicate."""
+
+    worker_id: str = "asha_001"
+    area_id: str | None = None
+    full_name: str
+    dob: str | None = None
+    phone: str | None = None
+
+
+class DuplicateCandidateOut(BaseModel):
+    """Scored candidate duplicate returned to UI (never auto-merged)."""
+
+    beneficiary_id: str
+    local_code: str
+    full_name: str
+    dob: str | None = None
+    score: float
+    reasons: list[str]
+
+
+class BeneficiarySpeechDraftOut(BaseModel):
+    """Editable beneficiary fields extracted from speak-to-add audio."""
+
+    full_name: str
+    beneficiary_type: str = "other"
+    sex: str = "unknown"
+    dob: str | None = None
+    dob_is_estimated: bool = False
+    age_years: int | None = None
+    age_days: int | None = None
+    pregnancy_months: int | None = None
+    lmp_date: str | None = None
+    edd_date: str | None = None
+    area_note: str | None = None
+    phone: str | None = None
+
+
+class BeneficiaryFromAudioResponse(BaseModel):
+    """Response for POST /v1/beneficiaries/from-audio."""
+
+    transcript: str
+    draft: BeneficiarySpeechDraftOut
+    duplicate_candidates: list[DuplicateCandidateOut] = Field(default_factory=list)
+
+
+class MeasurementPointOut(BaseModel):
+    """Normalized measurement data point for profile trend charts."""
+
+    key: str
+    value_num: float
+    unit: str
+    measured_at: str
+
+
+class BeneficiaryVisitsResponse(BaseModel):
+    """Merged timeline + trend measurements for a beneficiary profile."""
+
+    beneficiary_id: str
+    visits: list[VisitSummary] = Field(default_factory=list)
+    measurements: list[MeasurementPointOut] = Field(default_factory=list)

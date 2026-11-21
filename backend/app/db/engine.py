@@ -8,6 +8,7 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -30,7 +31,10 @@ def create_db_engine(database_url: str) -> Engine:
     """Create a SQLAlchemy Engine with SQLite foreign-key enforcement."""
     normalized = normalize_database_url(database_url)
     connect_args = {"check_same_thread": False} if normalized.startswith("sqlite") else {}
-    engine = create_engine(normalized, future=True, connect_args=connect_args)
+    kwargs: dict = {"future": True, "connect_args": connect_args}
+    if normalized == "sqlite:///:memory:":
+        kwargs["poolclass"] = StaticPool
+    engine = create_engine(normalized, **kwargs)
 
     if normalized.startswith("sqlite"):
 

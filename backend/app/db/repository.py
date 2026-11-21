@@ -3,19 +3,23 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.settings import get_settings
 from app.data.beneficiaries import SYNTHETIC_BENEFICIARIES, SYNTHETIC_WORKERS
+from app.db.engine import create_db_engine, make_session_factory
 from app.db.models import (
     Area,
     AudioAsset,
     AuditLogEntry,
+    Base,
     Beneficiary,
     Consent,
     Pregnancy,
@@ -24,6 +28,7 @@ from app.db.models import (
     VisitMeasurement,
     Worker,
 )
+from app.db.store import VisitStore, get_store
 from app.services.due_engine import compute_edd, compute_next_due_at, derive_risk_level
 from app.services.duplicate_detector import (
     DuplicateCandidateInput,
@@ -178,6 +183,7 @@ class V2Repository:
         dob: str | None = None,
         dob_is_estimated: bool = False,
         area_id: str | None = None,
+        area_note: str | None = None,
         household_id: str | None = None,
         mother_id: str | None = None,
         phone_enc: str | None = None,
@@ -201,21 +207,59 @@ class V2Repository:
             lmp_date=parsed_lmp,
         )
 
+        resolved_area_id = area_id
+        area_label = (area_note or "").strip()
+        if not resolved_area_id and area_label:
+            slug = re.sub(r"[^a-z0-9]+", "_", area_label.lower()).strip("_") or "custom"
+            resolved_area_id = f"area_{slug[:48]}"
+
         with self._session_factory() as db, db.begin():
+            if db.get(Worker, worker_id) is None:
+                db.add(
+                    Worker(
+                        id=worker_id,
+                        worker_code=worker_id,
+                        name=worker_id,
+                        language_pref="hi",
+                        area_ids="[]",
+                        pin_hash="",
+                        created_at=now,
+                    )
+                )
+            if resolved_area_id and db.get(Area, resolved_area_id) is None:
+                db.add(
+                    Area(
+                        id=resolved_area_id,
+                        name=area_label or resolved_area_id,
+                        code=resolved_area_id,
+                    )
+                )
+            resolved_mother_id: str | None = None
+            if mother_id:
+                mother_row = db.get(Beneficiary, mother_id) or db.scalar(
+                    select(Beneficiary).where(
+                        Beneficiary.worker_id == worker_id,
+                        Beneficiary.local_code == mother_id,
+                    )
+                )
+                if mother_row is not None:
+                    resolved_mother_id = mother_row.id
+            db.flush()
+
             consent_id: str | None = None
             row = Beneficiary(
                 id=bid,
                 local_code=code,
                 external_id=external_id,
                 worker_id=worker_id,
-                area_id=area_id,
+                area_id=resolved_area_id,
                 household_id=household_id,
                 full_name=full_name.strip(),
                 sex=sex,
                 dob=dob,
                 dob_is_estimated=dob_is_estimated,
                 beneficiary_type=beneficiary_type,
-                mother_id=mother_id,
+                mother_id=resolved_mother_id,
                 phone_enc=phone_enc,
                 consent_id=None,
                 status="active",
@@ -354,6 +398,100 @@ class V2Repository:
     def get_beneficiary(self, beneficiary_id: str) -> Beneficiary | None:
         with self._session_factory() as db:
             return db.get(Beneficiary, beneficiary_id)
+
+    def get_beneficiary_by_id_or_code(
+        self,
+        beneficiary_id: str,
+        *,
+        worker_id: str | None = None,
+    ) -> Beneficiary | None:
+        with self._session_factory() as db:
+            direct = db.get(Beneficiary, beneficiary_id)
+            if direct is not None and direct.deleted_at is None:
+                return direct
+            stmt = select(Beneficiary).where(
+                Beneficiary.local_code == beneficiary_id,
+                Beneficiary.deleted_at.is_(None),
+            )
+            if worker_id is not None:
+                stmt = stmt.where(Beneficiary.worker_id == worker_id)
+            return db.scalar(stmt)
+
+    def get_active_pregnancy(self, beneficiary_id: str) -> Pregnancy | None:
+        with self._session_factory() as db:
+            return db.scalar(
+                select(Pregnancy).where(
+                    Pregnancy.beneficiary_id == beneficiary_id,
+                    Pregnancy.status == "active",
+                )
+            )
+
+    def get_area_name(self, area_id: str | None) -> str | None:
+        if not area_id:
+            return None
+        with self._session_factory() as db:
+            area = db.get(Area, area_id)
+            return area.name if area is not None else area_id
+
+    def list_local_codes_for_worker(self, worker_id: str) -> set[str]:
+        with self._session_factory() as db:
+            return set(
+                db.scalars(
+                    select(Beneficiary.local_code).where(
+                        Beneficiary.worker_id == worker_id,
+                        Beneficiary.deleted_at.is_(None),
+                    )
+                ).all()
+            )
+
+    def update_beneficiary_fields(
+        self,
+        beneficiary_id: str,
+        *,
+        updates: dict[str, object],
+        actor_id: str,
+        device_id: str = "backend",
+    ) -> Beneficiary | None:
+        now = _utc_iso()
+        with self._session_factory() as db, db.begin():
+            row = db.get(Beneficiary, beneficiary_id)
+            if row is None or row.deleted_at is not None:
+                return None
+            allowed = {
+                "full_name",
+                "sex",
+                "dob",
+                "dob_is_estimated",
+                "beneficiary_type",
+                "area_id",
+                "phone_enc",
+                "status",
+            }
+            for k, v in updates.items():
+                if k in allowed:
+                    setattr(row, k, v)
+            row.updated_at = now
+            row.version += 1
+            self._append_audit(
+                db,
+                actor_id=actor_id,
+                action="beneficiary_updated",
+                entity="beneficiary",
+                entity_id=row.id,
+                device_id=device_id,
+                at=now,
+            )
+            return row
+
+    def list_visits_for_beneficiary(self, beneficiary_id: str) -> list[Visit]:
+        with self._session_factory() as db:
+            return list(
+                db.scalars(
+                    select(Visit)
+                    .where(Visit.beneficiary_id == beneficiary_id)
+                    .order_by(Visit.visited_at.desc())
+                ).all()
+            )
 
     def list_beneficiaries(
         self,
@@ -751,3 +889,15 @@ class V2Repository:
                 )
 
         return deleted_ids
+
+
+def get_v2_repository(store: VisitStore = Depends(get_store)) -> V2Repository:
+    """FastAPI dependency returning a seeded V2Repository sharing VisitStore's DB."""
+    if store._v2_repo is None:
+        engine = create_db_engine(store.database_url)
+        Base.metadata.create_all(engine)
+        repo = V2Repository(make_session_factory(engine))
+        repo.seed_defaults()
+        store._v2_engine = engine
+        store._v2_repo = repo
+    return store._v2_repo  # type: ignore[return-value]

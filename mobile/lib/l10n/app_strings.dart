@@ -317,6 +317,102 @@ class AppStrings {
         kn: 'ಉದ್ದೇಶ',
       );
 
+  // Beneficiaries, Add Beneficiary & Profile (V2 §3.3-3.5)
+  String get filterAll => _pick(en: 'All', hi: 'सभी', kn: 'ಎಲ್ಲಾ');
+  String get filterPregnant =>
+      _pick(en: 'Pregnant women', hi: 'गर्भवती महिला', kn: 'ಗರ್ಭಿಣಿಯರು');
+  String get filterNewborns =>
+      _pick(en: 'Newborns', hi: 'नवजात', kn: 'ನವಜಾತ ಶಿಶುಗಳು');
+  String get filterChildren => _pick(en: 'Children', hi: 'बच्चे', kn: 'ಮಕ್ಕಳು');
+  String get filterOthers => _pick(en: 'Others', hi: 'अन्य', kn: 'ಇತರರು');
+  String get filterHighRisk =>
+      _pick(en: 'High risk', hi: 'उच्च जोखिम', kn: 'ಹೆಚ್ಚಿನ ಅಪಾಯ');
+  String get addBeneficiaryAction =>
+      _pick(en: 'Add beneficiary', hi: 'नया लाभार्थी जोड़ें', kn: 'ಹೊಸ ಫಲಾನುಭವಿ ಸೇರಿಸಿ');
+  String get speakToAddTitle =>
+      _pick(en: 'Speak to fill (recommended)', hi: 'बोलकर भरें (सुझाव)', kn: 'ಮಾತನಾಡಿ ಭರ್ತಿ ಮಾಡಿ');
+  String get speakToAddHint => _pick(
+        en: 'Hold mic and say name, age, pregnant/newborn, and area.',
+        hi: 'माइक दबाकर नाम, उम्र, गर्भवती/नवजात और गाँव बोलें।',
+        kn: 'ಮೈಕ್ ಒತ್ತಿ ಹಿಡಿದು ಹೆಸರು, ವಯಸ್ಸು, ಗರ್ಭಿಣಿ/ನವಜಾತ ಮತ್ತು ಊರು ಹೇಳಿ.',
+      );
+  String get beneficiaryWhoStep =>
+      _pick(en: '1. Who', hi: '1. पहचान', kn: '1. ಪರಿಚಯ');
+  String get beneficiaryWhereStep =>
+      _pick(en: '2. Where & details', hi: '2. स्थान व विवरण', kn: '2. ಸ್ಥಳ ಮತ್ತು ವಿವರ');
+  String get beneficiaryConsentStep =>
+      _pick(en: '3. Consent & check', hi: '3. सहमति और जांच', kn: '3. ಸಮ್ಮತಿ ಮತ್ತು ಪರಿಶೀಲನೆ');
+  String get fullNameLabel => _pick(en: 'Full name', hi: 'पूरा नाम', kn: 'ಪೂರ್ಣ ಹೆಸರು');
+  String get beneficiaryTypeLabel =>
+      _pick(en: 'Category', hi: 'श्रेणी', kn: 'ವರ್ಗ');
+  String get sexLabel => _pick(en: 'Sex', hi: 'लिंग', kn: 'ಲಿಂಗ');
+  String get sexFemale => _pick(en: 'Female', hi: 'महिला', kn: 'ಹೆಣ್ಣು');
+  String get sexMale => _pick(en: 'Male', hi: 'पुरुष', kn: 'ಗಂಡು');
+  String get sexUnknown => _pick(en: 'Not specified', hi: 'स्पष्ट नहीं', kn: 'ತಿಳಿಸಿಲ್ಲ');
+  String get dobLabel => _pick(en: 'Date of birth (YYYY-MM-DD)', hi: 'जन्म तिथि (YYYY-MM-DD)', kn: 'ಜನ್ಮ ದಿನಾಂಕ (YYYY-MM-DD)');
+  String get ageYearsLabel => _pick(en: 'Age (years)', hi: 'उम्र (साल)', kn: 'ವಯಸ್ಸು (ವರ್ಷ)');
+  String get ageEstimatedFlag =>
+      _pick(en: 'Age is estimated', hi: 'अनुमानित उम्र', kn: 'ಅಂದಾಜು ವಯಸ್ಸು');
+  String get areaVillageLabel =>
+      _pick(en: 'Area / village', hi: 'गाँव / क्षेत्र', kn: 'ಪ್ರದೇಶ / ಗ್ರಾಮ');
+  String get phoneOptionalLabel =>
+      _pick(en: 'Phone (optional, masked after save)', hi: 'फ़ोन (वैकल्पिक)', kn: 'ಫೋನ್ (ಐಚ್ಛಿಕ)');
+  String get monthsPregnantLabel =>
+      _pick(en: 'Months pregnant (1–9)', hi: 'गर्भावस्था के महीने (1–9)', kn: 'ಗರ್ಭಾವಸ್ಥೆಯ ತಿಂಗಳು (1–9)');
+  String computedEddBanner(String edd) =>
+      _pick(en: 'Estimated due date (EDD): $edd', hi: 'संभावित प्रसव तिथि (EDD): $edd', kn: 'ಅಂದಾಜು ಹೆರಿಗೆ ದಿನಾಂಕ (EDD): $edd');
+  String get linkMotherLabel =>
+      _pick(en: 'Link mother (optional)', hi: 'माँ को जोड़ें (वैकल्पिक)', kn: 'ತಾಯಿಯನ್ನು ಜೋಡಿಸಿ (ಐಚ್ಛಿಕ)');
+  String get consentRequiredCheckbox => _pick(
+        en: 'Beneficiary / guardian agreed to health record collection',
+        hi: 'लाभार्थी / अभिभावक ने स्वास्थ्य जानकारी दर्ज करने की सहमति दी',
+        kn: 'ಫಲಾನುಭವಿ / ಪೋಷಕರು ಆರೋಗ್ಯ ಮಾಹಿತಿ ದಾಖಲಿಸಲು ಸಮ್ಮತಿಸಿದ್ದಾರೆ',
+      );
+  String get consentRequiredError => _pick(
+        en: 'Consent must be confirmed before saving.',
+        hi: 'सहेजने से पहले सहमति आवश्यक है।',
+        kn: 'ಉಳಿಸುವ ಮೊದಲು ಸಮ್ಮತಿ ಅಗತ್ಯವಿದೆ.',
+      );
+  String get consentMethodVerbal => _pick(en: 'Verbal', hi: 'मौखिक', kn: 'ಮೌಖಿಕ');
+  String get consentMethodSigned => _pick(en: 'Signed', hi: 'हस्ताक्षरित', kn: 'ಸಹಿ');
+  String get possibleDuplicateTitle =>
+      _pick(en: 'Possible match found', hi: 'मिलता-जुलता रिकॉर्ड मिला', kn: 'ಹೋಲುವ ದಾಖಲೆ ಕಂಡುಬಂದಿದೆ');
+  String get openExistingPersonAction =>
+      _pick(en: 'Open existing', hi: 'मौजूदा खोलें', kn: 'ಇರುವವರನ್ನು ತೆರೆಯಿರಿ');
+  String get saveAsNewPersonAction =>
+      _pick(en: 'Save as new person', hi: 'नए व्यक्ति के रूप में सहेजें', kn: 'ಹೊಸ ವ್ಯಕ್ತಿಯಾಗಿ ಉಳಿಸಿ');
+  String get saveBeneficiaryAction =>
+      _pick(en: 'Save beneficiary', hi: 'लाभार्थी सहेजें', kn: 'ಫಲಾನುಭವಿ ಉಳಿಸಿ');
+  String get beneficiarySavedTitle =>
+      _pick(en: 'Beneficiary saved', hi: 'लाभार्थी सहेजा गया', kn: 'ಫಲಾನುಭವಿ ಉಳಿಸಲಾಗಿದೆ');
+  String get recordFirstVisitNowAction =>
+      _pick(en: 'Record first visit now', hi: 'अभी पहली भेंट रिकॉर्ड करें', kn: 'ಈಗಲೇ ಮೊದಲ ಭೇಟಿ ದಾಖಲಿಸಿ');
+  String get tapToRevealAction => _pick(en: 'Tap to reveal', hi: 'देखने के लिए दबाएं', kn: 'ತೋರಿಸಲು ಟ್ಯಾಪ್ ಮಾಡಿ');
+  String get hideSensitiveAction => _pick(en: 'Hide', hi: 'छुपाएं', kn: 'ಮರೆಮಾಡಿ');
+  String get recentMeasurementsTitle =>
+      _pick(en: 'Health trends', hi: 'माप का रुझान', kn: 'ಆರೋಗ್ಯ ಅಳತೆಗಳು');
+  String get visitTimelineTitle =>
+      _pick(en: 'Visit timeline', hi: 'भेंट इतिहास', kn: 'ಭೇಟಿ ಇತಿಹಾಸ');
+  String get noVisitsRecordedYet =>
+      _pick(en: 'No visits recorded yet', hi: 'अभी कोई भेंट दर्ज नहीं है', kn: 'ಇನ್ನೂ ಯಾವುದೇ ಭೇಟಿ ದಾಖಲಾಗಿಲ್ಲ');
+  String get phoneLabel => _pick(en: 'Phone', hi: 'फ़ोन', kn: 'ಫೋನ್');
+  String beneficiaryTypeDisplay(String type) {
+    switch (type) {
+      case 'pregnant_woman':
+        return _pick(en: 'Pregnant woman', hi: 'गर्भवती महिला', kn: 'ಗರ್ಭಿಣಿ');
+      case 'newborn':
+        return _pick(en: 'Newborn', hi: 'नवजात', kn: 'ನವಜಾತ ಶಿಶು');
+      case 'child_u5':
+        return _pick(en: 'Child', hi: 'बच्चा', kn: 'ಮಗು');
+      case 'pnc_mother':
+        return _pick(en: 'PNC mother', hi: 'प्रसूता माता', kn: 'ಬಾಣಂತಿ');
+      case 'adult':
+        return _pick(en: 'Adult', hi: 'वयस्क', kn: 'ವಯಸ್ಕ');
+      default:
+        return _pick(en: 'Other', hi: 'अन्य', kn: 'ಇತರೆ');
+    }
+  }
+
   // Insights & Settings (V2 §3.9, §3.10)
   String get insightsTitle => _pick(
         en: 'Insights',

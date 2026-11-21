@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 import '../models/beneficiary.dart';
 import '../services/api_client.dart';
 import '../state/app_state.dart';
-import '../theme/app_theme.dart';
-import 'visit_purpose_picker_screen.dart';
+import '../ui/ui.dart';
+import 'add_beneficiary_screen.dart';
+import 'beneficiary_profile_screen.dart';
 
+enum _BeneficiaryFilter { all, pregnantWoman, newborn, child, other }
+
+/// Beneficiaries tab with search, type/risk filters, Add Beneficiary, and profile launch (SPEC_V2 §3.3).
 class BeneficiaryListScreen extends StatefulWidget {
   const BeneficiaryListScreen({
     super.key,
@@ -27,6 +31,8 @@ class _BeneficiaryListScreenState extends State<BeneficiaryListScreen> {
   bool _isOfflineCached = false;
   String? _errorText;
   String _query = '';
+  _BeneficiaryFilter _selectedFilter = _BeneficiaryFilter.all;
+  bool _highRiskOnly = false;
   String? _loadedForAsha;
   String? _loadedForUrl;
 
@@ -52,6 +58,20 @@ class _BeneficiaryListScreenState extends State<BeneficiaryListScreen> {
     }
   }
 
+  List<Beneficiary> _mergeRemoteAndLocal(
+    List<Beneficiary> remote,
+    List<Beneficiary> localOnlyV2,
+  ) {
+    final seenCodes = remote.map((b) => b.id).toSet();
+    final merged = List<Beneficiary>.of(remote);
+    for (final item in localOnlyV2) {
+      if (!seenCodes.contains(item.id)) {
+        merged.add(item);
+      }
+    }
+    return merged;
+  }
+
   Future<void> _load() async {
     final ashaId = widget.appState.selectedProfile?.id;
     if (ashaId == null) return;
@@ -64,22 +84,30 @@ class _BeneficiaryListScreenState extends State<BeneficiaryListScreen> {
       _loadedForUrl = widget.appState.baseUrl;
     });
 
+    final localRecords = await widget.appState.localDb.getBeneficiariesV2(ashaId);
+    final localConverted = localRecords
+        .where((r) => !r.id.startsWith('legacy_'))
+        .map((r) => Beneficiary.fromV2Record(r, localOnly: true))
+        .toList();
+
     try {
       final list = await widget.appState.api.getBeneficiaries(ashaId);
       await widget.appState.localDb.cacheBeneficiaries(ashaId, list);
       if (!mounted) return;
       setState(() {
-        _items = list;
+        _items = _mergeRemoteAndLocal(list, localConverted);
         _isOfflineCached = false;
         _loading = false;
       });
     } on ApiException catch (e) {
       if (e.code == 'NETWORK_ERROR' || e.code == 'TIMEOUT') {
-        final cached = await widget.appState.localDb.getCachedBeneficiaries(ashaId);
+        final cached =
+            await widget.appState.localDb.getCachedBeneficiaries(ashaId);
+        final combined = _mergeRemoteAndLocal(cached, localConverted);
         if (!mounted) return;
-        if (cached.isNotEmpty) {
+        if (combined.isNotEmpty) {
           setState(() {
-            _items = cached;
+            _items = combined;
             _isOfflineCached = true;
             _errorText = null;
             _loading = false;
@@ -95,44 +123,87 @@ class _BeneficiaryListScreenState extends State<BeneficiaryListScreen> {
     }
   }
 
-  Future<void> _openVisit(Beneficiary beneficiary) async {
-    final saved = await Navigator.of(context).push<bool>(
+  Future<void> _openAddBeneficiary() async {
+    final created = await Navigator.of(context).push<Beneficiary>(
+      MaterialPageRoute<Beneficiary>(
+        builder: (_) => AddBeneficiaryScreen(
+          appState: widget.appState,
+          existingBeneficiaries: _items,
+        ),
+      ),
+    );
+    await _load();
+    if (created != null) {
+      widget.onVisitSaved();
+    }
+  }
+
+  Future<void> _openProfile(Beneficiary beneficiary) async {
+    final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
-        builder: (_) => VisitPurposePickerScreen(
+        builder: (_) => BeneficiaryProfileScreen(
           appState: widget.appState,
           beneficiary: beneficiary,
         ),
       ),
     );
-    if (saved == true) {
+    await _load();
+    if (changed == true) {
       widget.onVisitSaved();
     }
   }
 
+  bool _matchesFilter(Beneficiary b) {
+    if (_highRiskOnly && b.riskLevel != 'high') return false;
+    switch (_selectedFilter) {
+      case _BeneficiaryFilter.all:
+        break;
+      case _BeneficiaryFilter.pregnantWoman:
+        if (b.beneficiaryType != 'pregnant_woman') return false;
+        break;
+      case _BeneficiaryFilter.newborn:
+        if (b.beneficiaryType != 'newborn') return false;
+        break;
+      case _BeneficiaryFilter.child:
+        if (b.beneficiaryType != 'child_u5') return false;
+        break;
+      case _BeneficiaryFilter.other:
+        if (b.beneficiaryType == 'pregnant_woman' ||
+            b.beneficiaryType == 'newborn' ||
+            b.beneficiaryType == 'child_u5') {
+          return false;
+        }
+        break;
+    }
+
+    final normalized = _query.trim().toLowerCase();
+    if (normalized.isEmpty) return true;
+    return b.id.toLowerCase().contains(normalized) ||
+        b.label.toLowerCase().contains(normalized) ||
+        (b.area != null && b.area!.toLowerCase().contains(normalized));
+  }
+
   @override
   Widget build(BuildContext context) {
+    final tokens = AppTokens.of(context);
     final strings = widget.appState.strings;
-    final normalized = _query.trim().toLowerCase();
-    final filtered = normalized.isEmpty
-        ? _items
-        : _items
-            .where(
-              (b) =>
-                  b.id.toLowerCase().contains(normalized) ||
-                  b.label.toLowerCase().contains(normalized),
-            )
-            .toList();
+    final filtered = _items.where(_matchesFilter).toList();
 
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenHorizontal,
+            AppSpacing.md,
+            AppSpacing.screenHorizontal,
+            AppSpacing.xs,
+          ),
           child: TextField(
             controller: _searchController,
             onChanged: (v) => setState(() => _query = v),
             decoration: InputDecoration(
               hintText: strings.searchBeneficiariesHint,
-              prefixIcon: const Icon(Icons.search_rounded, color: AppColors.inkSecondary),
+              prefixIcon: Icon(Icons.search_rounded, color: tokens.inkMuted),
               suffixIcon: _query.isNotEmpty
                   ? IconButton(
                       onPressed: () {
@@ -145,45 +216,61 @@ class _BeneficiaryListScreenState extends State<BeneficiaryListScreen> {
             ),
           ),
         ),
-        Expanded(
-          child: Column(
+        SizedBox(
+          height: 52,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.screenHorizontal,
+              vertical: AppSpacing.xs,
+            ),
             children: [
-              if (_isOfflineCached)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceSubtle,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.cloud_off_rounded,
-                          size: 16,
-                          color: AppColors.inkSecondary,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            strings.offlineShowingCached,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.inkSecondary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+              _FilterChipItem(
+                label: strings.filterAll,
+                selected: _selectedFilter == _BeneficiaryFilter.all,
+                onTap: () =>
+                    setState(() => _selectedFilter = _BeneficiaryFilter.all),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              _FilterChipItem(
+                label: strings.filterPregnant,
+                selected: _selectedFilter == _BeneficiaryFilter.pregnantWoman,
+                onTap: () => setState(
+                  () => _selectedFilter = _BeneficiaryFilter.pregnantWoman,
                 ),
-              Expanded(child: _buildBody(filtered)),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              _FilterChipItem(
+                label: strings.filterNewborns,
+                selected: _selectedFilter == _BeneficiaryFilter.newborn,
+                onTap: () => setState(
+                  () => _selectedFilter = _BeneficiaryFilter.newborn,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              _FilterChipItem(
+                label: strings.filterChildren,
+                selected: _selectedFilter == _BeneficiaryFilter.child,
+                onTap: () =>
+                    setState(() => _selectedFilter = _BeneficiaryFilter.child),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              _FilterChipItem(
+                label: strings.filterOthers,
+                selected: _selectedFilter == _BeneficiaryFilter.other,
+                onTap: () =>
+                    setState(() => _selectedFilter = _BeneficiaryFilter.other),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              FilterChip(
+                label: Text(strings.filterHighRisk),
+                selected: _highRiskOnly,
+                onSelected: (v) => setState(() => _highRiskOnly = v),
+              ),
             ],
           ),
         ),
+        Expanded(child: _buildBody(filtered)),
       ],
     );
   }
@@ -192,99 +279,122 @@ class _BeneficiaryListScreenState extends State<BeneficiaryListScreen> {
     final strings = widget.appState.strings;
 
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Padding(
+        padding: EdgeInsets.all(AppSpacing.screenHorizontal),
+        child: SkeletonLoader(itemCount: 3),
+      );
     }
 
     if (_errorText != null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.cloud_off_rounded, size: 42, color: AppColors.inkSecondary),
-              const SizedBox(height: 12),
-              Text(
-                _errorText!,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _load,
-                icon: const Icon(Icons.refresh_rounded),
-                label: Text(strings.retry),
-              ),
-            ],
+          padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
+          child: ErrorState(
+            title: strings.connectionFailed,
+            message: _errorText!,
+            retryLabel: strings.retry,
+            onRetry: _load,
           ),
-        ),
-      );
-    }
-
-    if (filtered.isEmpty) {
-      return Center(
-        child: Text(
-          strings.noBeneficiaries,
-          style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
     }
 
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-        itemCount: filtered.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (context, index) {
-          final beneficiary = filtered[index];
-          return Card(
-            child: InkWell(
-              onTap: () => _openVisit(beneficiary),
-              borderRadius: BorderRadius.circular(14),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryTint,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        beneficiary.id,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                          color: AppColors.primaryDark,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        beneficiary.label,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    const Icon(
-                      Icons.mic_none_rounded,
-                      color: AppColors.primary,
-                      size: 22,
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: AppColors.inkSecondary,
-                    ),
-                  ],
-                ),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.screenHorizontal,
+          AppSpacing.sm,
+          AppSpacing.screenHorizontal,
+          AppSpacing.xl,
+        ),
+        children: [
+          if (_isOfflineCached) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: RiskBadge(
+                label: strings.offlineShowingCached,
+                severity: RiskSeverity.info,
+                icon: Icons.cloud_off_rounded,
               ),
             ),
-          );
-        },
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          PrimaryButton(
+            label: strings.addBeneficiaryAction,
+            icon: Icons.person_add_alt_1_outlined,
+            onPressed: _openAddBeneficiary,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (filtered.isEmpty)
+            EmptyState(
+              icon: Icons.people_outline_rounded,
+              title: strings.noBeneficiaries,
+              message: strings.addBeneficiaryAction,
+              actionLabel: strings.addBeneficiaryAction,
+              actionIcon: Icons.person_add_alt_1_outlined,
+              onAction: _openAddBeneficiary,
+            )
+          else
+            ...filtered.map((beneficiary) {
+              final typeLabel =
+                  strings.beneficiaryTypeDisplay(beneficiary.beneficiaryType);
+              final age = beneficiary.ageSummary();
+              final meta = [
+                typeLabel,
+                if (age.isNotEmpty) age,
+                if (beneficiary.area != null && beneficiary.area!.isNotEmpty)
+                  beneficiary.area!,
+              ].join(' · ');
+
+              RiskSeverity? riskSeverity;
+              String? riskLabel;
+              if (beneficiary.riskLevel == 'high') {
+                riskSeverity = RiskSeverity.high;
+                riskLabel = strings.filterHighRisk;
+              } else if (beneficiary.riskLevel == 'watch') {
+                riskSeverity = RiskSeverity.medium;
+                riskLabel = strings.needsAttentionLabel;
+              }
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: BeneficiaryTile(
+                  name: beneficiary.label,
+                  typeAndAge: meta,
+                  codeLabel: beneficiary.id,
+                  dueLabel: beneficiary.nextDueAt != null
+                      ? '${strings.dueTodayLabel}: ${beneficiary.nextDueAt}'
+                      : null,
+                  riskLabel: riskLabel,
+                  riskSeverity: riskSeverity,
+                  onTap: () => _openProfile(beneficiary),
+                ),
+              );
+            }),
+        ],
       ),
+    );
+  }
+}
+
+class _FilterChipItem extends StatelessWidget {
+  const _FilterChipItem({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onTap(),
     );
   }
 }
