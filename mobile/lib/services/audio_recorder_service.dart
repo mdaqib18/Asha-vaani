@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
@@ -8,6 +10,7 @@ abstract class AudioCaptureService {
   Future<MicPermissionState> ensurePermission();
   Future<String> createTempWavPath();
   Future<void> startRecording(String filePath);
+  Future<Stream<Uint8List>?> startPcmStream();
   Future<String?> stopRecording();
   Future<bool> openSettings();
   void dispose();
@@ -52,6 +55,22 @@ class RecordAudioCaptureService implements AudioCaptureService {
         ),
       ),
       path: filePath,
+    );
+  }
+
+  @override
+  Future<Stream<Uint8List>?> startPcmStream() async {
+    return _recorder.startStream(
+      const RecordConfig(
+        encoder: AudioEncoder.pcm16bits,
+        sampleRate: 16000,
+        numChannels: 1,
+        noiseSuppress: true,
+        echoCancel: true,
+        androidConfig: AndroidRecordConfig(
+          audioSource: AndroidAudioSource.voiceRecognition,
+        ),
+      ),
     );
   }
 

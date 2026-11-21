@@ -13,6 +13,7 @@ import '../services/prefs_service.dart';
 import '../services/screen_security_service.dart';
 import '../services/secure_storage_service.dart';
 import '../services/sync_service.dart';
+import '../services/visit_stream_client.dart';
 
 class AppState extends ChangeNotifier {
   AppState({
@@ -26,6 +27,7 @@ class AppState extends ChangeNotifier {
     SecureStorageService? secureStorage,
     BiometricAuthService? biometricAuth,
     ScreenSecurityService? screenSecurity,
+    VisitStreamClient? visitStreamClient,
     AppLanguage initialLanguage = AppLanguage.hi,
     AshaProfile? initialProfile,
     bool? initialLocked,
@@ -37,6 +39,7 @@ class AppState extends ChangeNotifier {
         _secureStorage = secureStorage ?? FlutterSecureStorageService(),
         _biometricAuth = biometricAuth ?? LocalBiometricAuthService(),
         _screenSecurity = screenSecurity ?? PlatformScreenSecurityService(),
+        _visitStreamClient = visitStreamClient ?? IoVisitStreamClient(),
         _language = prefs?.language ?? initialLanguage,
         _sessionToken = prefs?.sessionToken,
         _pinDigest = prefs?.pinDigest,
@@ -85,6 +88,7 @@ class AppState extends ChangeNotifier {
   final SecureStorageService _secureStorage;
   final BiometricAuthService _biometricAuth;
   final ScreenSecurityService _screenSecurity;
+  final VisitStreamClient _visitStreamClient;
   final AudioCaptureService _recorder;
   final AudioPlaybackService _audioPlayer;
   late final LocalDbService _localDb;
@@ -136,6 +140,7 @@ class AppState extends ChangeNotifier {
   LocalDbService get localDb => _localDb;
   SyncService get syncService => _syncService;
   SecureStorageService get secureStorage => _secureStorage;
+  VisitStreamClient get visitStream => _visitStreamClient;
 
   Future<void> initializeSecurity() async {
     // Migrate legacy secrets out of SharedPreferences into encrypted storage.

@@ -166,6 +166,10 @@ void main() {
       expect(s.privacyRetentionBody.trim(), isNotEmpty);
       expect(s.privacyAccessBody.trim(), isNotEmpty);
       expect(s.privacyDeletionBody.trim(), isNotEmpty);
+      expect(s.liveCaptionsTitle.trim(), isNotEmpty);
+      expect(s.liveCaptionsPlaceholder.trim(), isNotEmpty);
+      expect(s.liveCaptionsPausedNotice.trim(), isNotEmpty);
+      expect(s.autoDetectLanguageLabel.trim(), isNotEmpty);
       expect(s.friendlyError('INVALID_CREDENTIALS').trim(), isNotEmpty);
       expect(s.friendlyError('OFFLINE_FIRST_LOGIN').trim(), isNotEmpty);
       expect(s.friendlyError('NETWORK_ERROR').trim(), isNotEmpty);

@@ -16,6 +16,7 @@ import 'package:asha_vaani/services/local_db_service.dart';
 import 'package:asha_vaani/services/screen_security_service.dart';
 import 'package:asha_vaani/services/secure_storage_service.dart';
 import 'package:asha_vaani/services/sync_service.dart';
+import 'package:asha_vaani/services/visit_stream_client.dart';
 import 'package:asha_vaani/state/app_state.dart';
 
 class FakeAshaApiClient implements AshaApiClient {
@@ -53,6 +54,7 @@ class FakeAshaApiClient implements AshaApiClient {
   );
   List<SyncItemResult> Function(List<SyncBatchItem> items)? onSyncBatch;
 
+  final List<Map<String, dynamic>> uploadCalls = [];
   final List<Map<String, dynamic>> answerCalls = [];
   final List<Map<String, dynamic>> patchCalls = [];
   final List<String> confirmCalls = [];
@@ -222,6 +224,13 @@ class FakeAshaApiClient implements AshaApiClient {
     String? sessionId,
     String visitType = 'newborn_home_visit',
   }) async {
+    uploadCalls.add({
+      'filePath': filePath,
+      'language': language,
+      'ashaId': ashaId,
+      'beneficiaryId': beneficiaryId,
+      'visitType': visitType,
+    });
     if (uploadError != null) throw uploadError!;
     return nextUploadResponse!;
   }
@@ -332,14 +341,18 @@ class FakeAshaApiClient implements AshaApiClient {
 
 class FakeAudioCaptureService implements AudioCaptureService {
   MicPermissionState permissionState = MicPermissionState.granted;
+  bool supportsStreaming = false;
+  StreamController<Uint8List>? streamController;
   int startCalls = 0;
+  int streamStartCalls = 0;
   int stopCalls = 0;
 
   @override
   Future<MicPermissionState> ensurePermission() async => permissionState;
 
   @override
-  Future<String> createTempWavPath() async => '/tmp/fake_visit_${startCalls + 1}.wav';
+  Future<String> createTempWavPath() async =>
+      '${Directory.systemTemp.path}/fake_visit_${startCalls + streamStartCalls + 1}.wav';
 
   @override
   Future<void> startRecording(String filePath) async {
@@ -347,16 +360,99 @@ class FakeAudioCaptureService implements AudioCaptureService {
   }
 
   @override
+  Future<Stream<Uint8List>?> startPcmStream() async {
+    if (!supportsStreaming) return null;
+    streamStartCalls += 1;
+    streamController?.close();
+    streamController = StreamController<Uint8List>.broadcast();
+    return streamController!.stream;
+  }
+
+  @override
   Future<String?> stopRecording() async {
     stopCalls += 1;
-    return '/tmp/fake_visit_$startCalls.wav';
+    final ctrl = streamController;
+    streamController = null;
+    if (ctrl != null && !ctrl.isClosed) {
+      unawaited(ctrl.close());
+    }
+    return '${Directory.systemTemp.path}/fake_visit_${startCalls + streamStartCalls}.wav';
   }
 
   @override
   Future<bool> openSettings() async => true;
 
   @override
-  void dispose() {}
+  void dispose() {
+    streamController?.close();
+  }
+}
+
+class FakeVisitStreamSession implements VisitStreamSession {
+  final StreamController<StreamServerEvent> _controller =
+      StreamController<StreamServerEvent>.broadcast();
+  final List<Uint8List> sentPcmChunks = [];
+  bool stopped = false;
+  bool closed = false;
+
+  void Function()? onStop;
+
+  void emitEvent(StreamServerEvent event) {
+    if (!_controller.isClosed) {
+      _controller.add(event);
+    }
+  }
+
+  @override
+  Stream<StreamServerEvent> get events => _controller.stream;
+
+  @override
+  void sendPcm(Uint8List chunk) {
+    sentPcmChunks.add(chunk);
+  }
+
+  @override
+  Future<void> stop() async {
+    stopped = true;
+    onStop?.call();
+  }
+
+  @override
+  Future<void> close() async {
+    closed = true;
+    if (!_controller.isClosed) {
+      await _controller.close();
+    }
+  }
+}
+
+class FakeVisitStreamClient implements VisitStreamClient {
+  final List<FakeVisitStreamSession> sessions = [];
+  Exception? connectError;
+  String? lastLanguage;
+  String? lastVisitType;
+  void Function(FakeVisitStreamSession session)? onConnect;
+
+  @override
+  Future<VisitStreamSession> connect({
+    required String baseUrl,
+    required String language,
+    required String visitType,
+    String? sessionId,
+    String? beneficiaryId,
+    String? ashaId,
+    String? authToken,
+  }) async {
+    lastLanguage = language;
+    lastVisitType = visitType;
+    if (connectError != null) {
+      throw connectError!;
+    }
+    final session = FakeVisitStreamSession();
+    sessions.add(session);
+    onConnect?.call(session);
+    return session;
+  }
 }
 
 class FakeAudioPlaybackService implements AudioPlaybackService {
@@ -1016,6 +1112,7 @@ AppState makeTestAppState({
   InMemorySecureStorageService? secureStorage,
   FakeBiometricAuthService? biometricAuth,
   FakeScreenSecurityService? screenSecurity,
+  FakeVisitStreamClient? visitStreamClient,
   AppLanguage initialLanguage = AppLanguage.en,
   AshaProfile? initialProfile,
   bool? initialLocked,
@@ -1044,6 +1141,7 @@ AppState makeTestAppState({
     secureStorage: secureStorage ?? InMemorySecureStorageService(),
     biometricAuth: biometricAuth ?? FakeBiometricAuthService(),
     screenSecurity: screenSecurity ?? FakeScreenSecurityService(),
+    visitStreamClient: visitStreamClient ?? FakeVisitStreamClient(),
     initialLanguage: initialLanguage,
     initialProfile: initialProfile,
     initialLocked: initialLocked,

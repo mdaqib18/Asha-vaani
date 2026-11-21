@@ -808,6 +808,26 @@ class AppStrings {
         hi: 'V2 डिज़ाइन गैलरी',
         kn: 'V2 ವಿನ್ಯಾಸ ಗ್ಯಾಲರಿ',
       );
+  String get liveCaptionsTitle => _pick(
+        en: 'Live captions',
+        hi: 'लाइव कैप्शन',
+        kn: 'ಲೈವ್ ಶೀರ್ಷಿಕೆಗಳು',
+      );
+  String get liveCaptionsPlaceholder => _pick(
+        en: 'Spoken words will appear here while you speak…',
+        hi: 'बोलते समय आपके शब्द यहां दिखेंगे…',
+        kn: 'ನೀವು ಮಾತನಾಡುವಾಗ ಪದಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ…',
+      );
+  String get liveCaptionsPausedNotice => _pick(
+        en: 'Live captions paused, still recording',
+        hi: 'लाइव कैप्शन रुके हैं, रिकॉर्डिंग जारी है',
+        kn: 'ಲೈವ್ ಶೀರ್ಷಿಕೆ ನಿಂತಿದೆ, ರೆಕಾರ್ಡಿಂಗ್ ಮುಂದುವರಿದಿದೆ',
+      );
+  String get autoDetectLanguageLabel => _pick(
+        en: 'Auto-detect language',
+        hi: 'भाषा स्वतः पहचानें',
+        kn: 'ಭಾಷೆಯನ್ನು ಸ್ವಯಂ ಗುರುತಿಸಿ',
+      );
 
   // Beneficiary List
   String get searchBeneficiariesHint => _pick(

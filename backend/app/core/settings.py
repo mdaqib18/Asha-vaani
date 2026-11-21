@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     GNANI_API_KEY: str | None = None
     GNANI_STT_URL: str = "https://api.vachana.ai/stt/v3"
+    GNANI_STT_STREAM_URL: str = "wss://api.vachana.ai/stt/v3/stream"
     GNANI_TTS_URL: str = "https://api.vachana.ai/api/v1/tts/inference"
     GNANI_STT_MODEL: str = "prisma-v3.0"
     GNANI_STT_FORMAT: str = "transcribe"

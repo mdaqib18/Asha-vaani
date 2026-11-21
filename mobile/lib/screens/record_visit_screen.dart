@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
@@ -8,9 +9,12 @@ import '../models/newborn_visit.dart';
 import '../models/v2_models.dart';
 import '../services/api_client.dart';
 import '../services/audio_recorder_service.dart';
+import '../services/visit_stream_client.dart';
+import '../services/wav_encoder.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
+import '../ui/live_transcript.dart';
 import '../widgets/language_toggle.dart';
 import 'review_confirm_screen.dart';
 
@@ -59,6 +63,20 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
   int _elapsedSeconds = 0;
   bool _heldLongEnough = false;
   String? _activeFilePath;
+
+  bool _autoDetectLanguage = false;
+  bool _streamingMode = false;
+  bool _captionsPaused = false;
+  String _finalizedTranscript = '';
+  String _partialTranscript = '';
+  double? _audioLevel;
+  VisitStreamSession? _streamSession;
+  StreamSubscription<Uint8List>? _pcmSub;
+  StreamSubscription<StreamServerEvent>? _wsSub;
+  final BytesBuilder _pcmBuffer = BytesBuilder(copy: false);
+  StreamServerEvent? _streamFieldsEvent;
+  FollowupPayload? _streamFollowup;
+  Completer<void>? _streamCompletion;
 
   @override
   void initState() {
@@ -122,8 +140,25 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
     _playbackToken += 1;
     _timer?.cancel();
     _minHoldTimer?.cancel();
+    _disposeStreamResources();
     widget.appState.audioPlayer.stop();
     super.dispose();
+  }
+
+  void _disposeStreamResources() {
+    _pcmSub?.cancel();
+    _pcmSub = null;
+    _wsSub?.cancel();
+    _wsSub = null;
+    final session = _streamSession;
+    _streamSession = null;
+    if (session != null) {
+      unawaited(session.close());
+    }
+    if (_streamCompletion != null && !_streamCompletion!.isCompleted) {
+      _streamCompletion!.complete();
+    }
+    _streamCompletion = null;
   }
 
   Future<void> _checkMicPermission() async {
@@ -163,16 +198,123 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
     await _beginRecording(autoListening: true);
   }
 
+  Future<void> _connectStreamSession() async {
+    final profile = widget.appState.selectedProfile;
+    final streamLang =
+        _autoDetectLanguage ? 'auto' : widget.appState.language.code;
+    try {
+      final session = await widget.appState.visitStream.connect(
+        baseUrl: widget.appState.baseUrl,
+        language: streamLang,
+        visitType: widget.visitTypeCode,
+        sessionId: _activeSessionId,
+        beneficiaryId: widget.beneficiary.id,
+        ashaId: profile?.id,
+        authToken: widget.appState.sessionToken,
+      );
+      if (!mounted || (!_recording && !_uploading)) {
+        await session.close();
+        return;
+      }
+      _streamSession = session;
+      _wsSub = session.events.listen(
+        (ev) {
+          if (!mounted) return;
+          switch (ev.type) {
+            case StreamEventType.partial:
+              setState(() => _partialTranscript = ev.text);
+              break;
+            case StreamEventType.finalText:
+              final piece = ev.text.trim();
+              if (piece.isNotEmpty) {
+                setState(() {
+                  _finalizedTranscript = _finalizedTranscript.isEmpty
+                      ? piece
+                      : '$_finalizedTranscript $piece';
+                  _partialTranscript = '';
+                });
+              }
+              break;
+            case StreamEventType.fields:
+              _streamFieldsEvent = ev;
+              if (ev.status != 'needs_followup' &&
+                  _streamCompletion != null &&
+                  !_streamCompletion!.isCompleted) {
+                _streamCompletion!.complete();
+              }
+              break;
+            case StreamEventType.followup:
+              _streamFollowup = ev.followup;
+              if (_streamCompletion != null && !_streamCompletion!.isCompleted) {
+                _streamCompletion!.complete();
+              }
+              break;
+            case StreamEventType.error:
+              setState(() => _captionsPaused = true);
+              if (_streamCompletion != null && !_streamCompletion!.isCompleted) {
+                _streamCompletion!.complete();
+              }
+              break;
+          }
+        },
+        onError: (_) {
+          if (mounted && _streamFieldsEvent == null) {
+            setState(() => _captionsPaused = true);
+          }
+          if (_streamCompletion != null && !_streamCompletion!.isCompleted) {
+            _streamCompletion!.complete();
+          }
+        },
+        onDone: () {
+          if (mounted && _recording && _streamFieldsEvent == null) {
+            setState(() => _captionsPaused = true);
+          }
+          if (_streamCompletion != null && !_streamCompletion!.isCompleted) {
+            _streamCompletion!.complete();
+          }
+        },
+      );
+      final buffered = _pcmBuffer.toBytes();
+      if (buffered.isNotEmpty && !_captionsPaused) {
+        session.sendPcm(buffered);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _captionsPaused = true);
+      }
+    }
+  }
+
   Future<void> _beginRecording({required bool autoListening}) async {
     try {
-      final path = await widget.appState.recorder.createTempWavPath();
-      await widget.appState.recorder.startRecording(path);
+      _disposeStreamResources();
+      _pcmBuffer.clear();
+
+      Stream<Uint8List>? pcmStream;
+      try {
+        pcmStream = await widget.appState.recorder.startPcmStream();
+      } catch (_) {
+        pcmStream = null;
+      }
+
+      String? filePath;
+      if (pcmStream == null) {
+        filePath = await widget.appState.recorder.createTempWavPath();
+        await widget.appState.recorder.startRecording(filePath);
+      }
       if (!mounted) return;
 
       _timer?.cancel();
       _minHoldTimer?.cancel();
       setState(() {
-        _activeFilePath = path;
+        _activeFilePath = filePath;
+        _streamingMode = pcmStream != null;
+        _captionsPaused = false;
+        _finalizedTranscript = '';
+        _partialTranscript = '';
+        _audioLevel = pcmStream != null ? 0.0 : null;
+        _streamFieldsEvent = null;
+        _streamFollowup = null;
         _recording = true;
         _autoListening = autoListening;
         _elapsedSeconds = 0;
@@ -180,6 +322,20 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
         _statusMessage = null;
         _isErrorMessage = false;
       });
+
+      if (pcmStream != null) {
+        _pcmSub = pcmStream.listen((chunk) {
+          if (chunk.isEmpty) return;
+          _pcmBuffer.add(chunk);
+          if (mounted) {
+            setState(() => _audioLevel = WavEncoder.computeAudioLevel(chunk));
+          }
+          if (!_captionsPaused) {
+            _streamSession?.sendPcm(chunk);
+          }
+        });
+        unawaited(_connectStreamSession());
+      }
 
       if (!autoListening) {
         _minHoldTimer = Timer(
@@ -199,10 +355,12 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
         }
       });
     } catch (_) {
+      _disposeStreamResources();
       if (!mounted) return;
       setState(() {
         _recording = false;
         _autoListening = false;
+        _streamingMode = false;
         _statusMessage = widget.appState.strings.friendlyError('INVALID_AUDIO');
         _isErrorMessage = true;
       });
@@ -213,11 +371,21 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
     if (!_recording) return;
     _timer?.cancel();
     _minHoldTimer?.cancel();
+
     final heldEnough = _heldLongEnough;
+    final wasStreaming = _streamingMode;
     setState(() {
       _recording = false;
       _autoListening = false;
+      _audioLevel = null;
     });
+
+    final pcmSub = _pcmSub;
+    _pcmSub = null;
+    if (pcmSub != null) {
+      unawaited(pcmSub.cancel());
+    }
+    if (!mounted) return;
 
     String? recordedPath;
     try {
@@ -225,6 +393,87 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
     } catch (_) {
       recordedPath = _activeFilePath;
     }
+    if (!mounted) return;
+
+    if (wasStreaming) {
+      final pcmBytes = _pcmBuffer.takeBytes();
+      if (checkMinHold && (!heldEnough || pcmBytes.isEmpty)) {
+        _disposeStreamResources();
+        if (!mounted) return;
+        setState(() {
+          _streamingMode = false;
+          _statusMessage = widget.appState.strings.holdLongerHint;
+          _isErrorMessage = false;
+        });
+        return;
+      }
+
+      if (_streamSession != null && !_captionsPaused) {
+        setState(() => _uploading = true);
+        if (_streamFieldsEvent == null) {
+          _streamCompletion = Completer<void>();
+          try {
+            await _streamSession!.stop();
+            await _streamCompletion!.future.timeout(
+              const Duration(seconds: 12),
+              onTimeout: () {},
+            );
+          } catch (_) {
+            if (mounted) {
+              setState(() => _captionsPaused = true);
+            }
+          }
+        }
+        if (!mounted) {
+          _disposeStreamResources();
+          return;
+        }
+        final fieldsEv = _streamFieldsEvent;
+        final followup = _streamFollowup;
+        if (fieldsEv != null &&
+            fieldsEv.record != null &&
+            fieldsEv.status != null &&
+            !_captionsPaused) {
+          final turn = VisitTurnResponse(
+            sessionId: fieldsEv.sessionId ?? (_activeSessionId ?? ''),
+            transcript: fieldsEv.text,
+            record: fieldsEv.record!,
+            flags: fieldsEv.flags,
+            riskFlags: fieldsEv.riskFlags,
+            referralSuggested: fieldsEv.referralSuggested,
+            status: fieldsEv.status!,
+            followup: followup,
+          );
+          _disposeStreamResources();
+          if (!mounted) return;
+          setState(() => _uploading = false);
+          await _handleTurnResponse(turn);
+          return;
+        }
+      }
+
+      // Automatic local WAV fallback when WebSocket dropped or produced no fields.
+      _disposeStreamResources();
+      if (pcmBytes.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _uploading = false;
+            _statusMessage = widget.appState.strings.holdLongerHint;
+          });
+        }
+        return;
+      }
+      final wavPath = await widget.appState.recorder.createTempWavPath();
+      final wavBytes = WavEncoder.encodePcm16Mono(pcmBytes);
+      final wavFile = File(wavPath);
+      if (!wavFile.parent.existsSync()) {
+        wavFile.parent.createSync(recursive: true);
+      }
+      wavFile.writeAsBytesSync(wavBytes, flush: true);
+      await _uploadAudio(wavPath);
+      return;
+    }
+
     final pathToUse = recordedPath ?? _activeFilePath;
 
     if (checkMinHold && (!heldEnough || pathToUse == null)) {
@@ -508,6 +757,24 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
                     )
                   else
                     _IconCueStrip(appState: widget.appState),
+                  if (_streamingMode ||
+                      _finalizedTranscript.isNotEmpty ||
+                      _partialTranscript.isNotEmpty ||
+                      _captionsPaused)
+                    Padding(
+                      key: const ValueKey('live_transcript_slot'),
+                      padding: const EdgeInsets.only(top: AppSpacing.md),
+                      child: LiveTranscript(
+                        finalizedText: _finalizedTranscript,
+                        partialText: _partialTranscript,
+                        placeholder: strings.liveCaptionsPlaceholder,
+                        pausedNotice: _captionsPaused
+                            ? strings.liveCaptionsPausedNotice
+                            : null,
+                        audioLevel: _audioLevel,
+                        label: strings.liveCaptionsTitle,
+                      ),
+                    ),
                   const SizedBox(height: AppSpacing.lg),
                   if (_savedOffline)
                     _SavedOfflineCard(
@@ -546,7 +813,23 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
                       },
                     )
                   else ...[
+                    Align(
+                      key: const ValueKey('auto_detect_slot'),
+                      alignment: Alignment.centerLeft,
+                      child: FilterChip(
+                        key: const ValueKey('auto_detect_language_toggle'),
+                        avatar: const Icon(Icons.translate_rounded, size: 18),
+                        label: Text(strings.autoDetectLanguageLabel),
+                        selected: _autoDetectLanguage,
+                        onSelected: _recording || _uploading
+                            ? null
+                            : (val) =>
+                                setState(() => _autoDetectLanguage = val),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
                     Center(
+                      key: const ValueKey('status_pill_slot'),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
@@ -579,7 +862,10 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Center(child: _buildMicButton()),
+                    Center(
+                      key: const ValueKey('mic_button_slot'),
+                      child: _buildMicButton(),
+                    ),
                     const SizedBox(height: 14),
                     Text(
                       _autoListening

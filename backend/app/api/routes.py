@@ -1,17 +1,30 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import binascii
+import contextlib
 import json
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import date, timedelta
 
 import httpx
-from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    Query,
+    Response,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
 
 from app.core.config_loader import VisitTypeConfig, list_visit_configs, load_visit_config
 from app.core.errors import ApiError
-from app.core.security import issue_session_token
+from app.core.security import issue_session_token, verify_session_token
 from app.core.settings import Settings, get_settings
 from app.data.beneficiaries import (
     get_assigned_ids,
@@ -65,8 +78,15 @@ from app.services.followup import (
 )
 from app.services.gnani_common import LANGUAGE_MAP
 from app.services.measurements import extract_numeric_measurements
-from app.services.pipeline import process_audio
+from app.services.pipeline import PipelineResult, process_audio, process_transcript
 from app.services.purpose_engine import suggest_visit_purpose
+from app.services.stt_stream_gnani import (
+    GnaniSttStreamSession,
+    PcmFramePacer,
+    STREAM_LANGUAGE_MAP,
+    open_gnani_stream,
+    resolve_short_language,
+)
 from app.services.tts_gnani import TTS_CONTENT_TYPE
 
 router = APIRouter(prefix="/v1")
@@ -75,6 +95,14 @@ router = APIRouter(prefix="/v1")
 def get_http_client() -> httpx.AsyncClient | None:
     """FastAPI dependency for optional shared HTTP client (overridable in tests)."""
     return None
+
+
+SttStreamFactory = Callable[..., Awaitable[GnaniSttStreamSession]]
+
+
+def get_stt_stream_factory() -> SttStreamFactory:
+    """FastAPI dependency returning the upstream Gnani STT WebSocket factory."""
+    return open_gnani_stream
 
 
 def _validate_language(language: str) -> None:
@@ -136,7 +164,28 @@ async def _run_visit_turn(
         settings=settings,
         client=http_client,
     )
+    return await _finalize_visit_result(
+        session,
+        result,
+        prev_snapshot,
+        language,
+        store=store,
+        settings=settings,
+        http_client=http_client,
+    )
 
+
+async def _finalize_visit_result(
+    session: StoredSession,
+    result: PipelineResult,
+    prev_snapshot: dict,
+    language: str,
+    *,
+    store: VisitStore,
+    settings: Settings,
+    http_client: httpx.AsyncClient | None,
+) -> VisitTurnResponse:
+    """Shared validation, follow-up decision, TTS generation, and session save step."""
     cfg_schema_version = load_visit_config(session.visit_type).schema_version
 
     if not result.transcript.strip() and prev_snapshot == result.record.model_dump(mode="json"):
@@ -1072,3 +1121,293 @@ def get_stats_due_list(
         limit=limit,
     )
     return [DueListItemOut(**item) for item in items]
+
+
+@router.websocket("/stream")
+async def stream_visit_audio(
+    websocket: WebSocket,
+    store: VisitStore = Depends(get_store),
+    settings: Settings = Depends(get_settings),
+    http_client: httpx.AsyncClient | None = Depends(get_http_client),
+    stream_factory: SttStreamFactory = Depends(get_stt_stream_factory),
+) -> None:
+    """Hybrid real-time PCM16 streaming proxy (`SPEC_V2 §8.3, §8.4`)."""
+    await websocket.accept()
+
+    auth_header = websocket.headers.get("authorization", "")
+    if auth_header.lower().startswith("bearer "):
+        try:
+            verify_session_token(
+                auth_header.split(" ", 1)[1].strip(),
+                secret=settings.SESSION_SECRET,
+            )
+        except ApiError as exc:
+            await websocket.send_json(
+                {"type": "error", "code": exc.code, "message": exc.message}
+            )
+            await websocket.close(code=4401)
+            return
+    elif settings.REQUIRE_AUTH:
+        await websocket.send_json(
+            {"type": "error", "code": "AUTH_REQUIRED", "message": "Authentication required."}
+        )
+        await websocket.close(code=4401)
+        return
+
+    try:
+        raw_start = await websocket.receive_text()
+        start_msg = json.loads(raw_start)
+    except WebSocketDisconnect:
+        return
+    except Exception:
+        await websocket.send_json(
+            {
+                "type": "error",
+                "code": "STT_STREAM_FAILED",
+                "message": "Expected JSON start frame.",
+            }
+        )
+        await websocket.close(code=1003)
+        return
+
+    if not isinstance(start_msg, dict) or start_msg.get("type") != "start":
+        await websocket.send_json(
+            {
+                "type": "error",
+                "code": "STT_STREAM_FAILED",
+                "message": "First message must be type=start.",
+            }
+        )
+        await websocket.close(code=1003)
+        return
+
+    language = str(start_msg.get("language") or "hi").strip().lower()
+    if language not in STREAM_LANGUAGE_MAP:
+        await websocket.send_json(
+            {
+                "type": "error",
+                "code": "INVALID_LANGUAGE",
+                "message": f"Unsupported language code: {language}",
+            }
+        )
+        await websocket.close(code=1008)
+        return
+
+    visit_type = str(start_msg.get("visit_type") or "newborn_home_visit").strip()
+    try:
+        load_visit_config(visit_type)
+    except ValueError as exc:
+        await websocket.send_json(
+            {"type": "error", "code": "INVALID_VISIT_TYPE", "message": str(exc)}
+        )
+        await websocket.close(code=1008)
+        return
+
+    asha_id = str(start_msg.get("asha_id") or "asha_001").strip() or "asha_001"
+    session_id = start_msg.get("session_id")
+    if isinstance(session_id, str) and session_id.strip():
+        session = store.get_session(session_id.strip())
+        if session is None:
+            session = StoredSession(
+                session_id=session_id.strip(),
+                asha_id=asha_id,
+                visit_type=visit_type,
+                language="hi" if language == "auto" else language,
+            )
+    else:
+        session = StoredSession(
+            session_id=str(uuid.uuid4()),
+            asha_id=asha_id,
+            visit_type=visit_type,
+            language="hi" if language == "auto" else language,
+        )
+
+    ben_id = start_msg.get("beneficiary_id")
+    if isinstance(ben_id, str) and ben_id.strip():
+        session.record.beneficiary_id = ExtractedField(
+            value=ben_id.strip(),
+            confidence=1.0,
+            source=FieldSource.selected,
+            needs_confirmation=False,
+        )
+
+    try:
+        upstream = await stream_factory(language, settings=settings)
+    except ApiError as exc:
+        await websocket.send_json(
+            {"type": "error", "code": "STT_STREAM_FAILED", "message": exc.message}
+        )
+        await websocket.close(code=1011)
+        return
+    except Exception as exc:
+        await websocket.send_json(
+            {
+                "type": "error",
+                "code": "STT_STREAM_FAILED",
+                "message": f"Unable to open upstream stream: {exc}",
+            }
+        )
+        await websocket.close(code=1011)
+        return
+
+    final_chunks: list[str] = []
+    last_partial = ""
+    last_detected_lang: str | None = None
+    utterance_counter = 0
+    upstream_error_sent = False
+
+    async def _forward_upstream_events() -> None:
+        nonlocal last_partial, last_detected_lang, utterance_counter, upstream_error_sent
+        async for ev in upstream.events():
+            if ev.type == "connected":
+                continue
+            if ev.type == "error":
+                upstream_error_sent = True
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "code": ev.code or "STT_STREAM_FAILED",
+                        "message": ev.message or "Upstream STT stream error.",
+                    }
+                )
+                return
+            if ev.detected_language:
+                last_detected_lang = ev.detected_language
+            if ev.type == "partial" and ev.text:
+                last_partial = ev.text
+                await websocket.send_json({"type": "partial", "text": ev.text})
+            elif ev.type == "final" and ev.text.strip():
+                utterance_counter += 1
+                uid = ev.utterance_id or utterance_counter
+                final_chunks.append(ev.text.strip())
+                last_partial = ""
+                await websocket.send_json(
+                    {"type": "final", "text": ev.text.strip(), "utterance_id": uid}
+                )
+
+    pacer = PcmFramePacer()
+    reader_task = asyncio.create_task(_forward_upstream_events())
+    stopped_by_client = False
+
+    try:
+        while True:
+            msg = await websocket.receive()
+            if msg.get("type") == "websocket.disconnect":
+                break
+            pcm_bytes = msg.get("bytes")
+            if isinstance(pcm_bytes, (bytes, bytearray)) and pcm_bytes:
+                await pacer.send_paced(bytes(pcm_bytes), upstream.send_pcm)
+                continue
+            text_payload = msg.get("text")
+            if isinstance(text_payload, str) and text_payload.strip():
+                try:
+                    ctrl = json.loads(text_payload)
+                except json.JSONDecodeError:
+                    ctrl = {}
+                if isinstance(ctrl, dict) and ctrl.get("type") == "stop":
+                    stopped_by_client = True
+                    await pacer.flush_paced(upstream.send_pcm)
+                    await upstream.finish()
+                    break
+
+        if stopped_by_client:
+            try:
+                await asyncio.wait_for(reader_task, timeout=10.0)
+            except asyncio.TimeoutError:
+                reader_task.cancel()
+
+            if not upstream_error_sent:
+                transcript = " ".join(final_chunks).strip()
+                if not transcript and last_partial.strip():
+                    transcript = last_partial.strip()
+
+                resolved_lang = (
+                    resolve_short_language(last_detected_lang, fallback="hi")
+                    if language == "auto"
+                    else language
+                )
+                prev_snapshot = session.record.model_dump(mode="json")
+
+                if not transcript:
+                    turn_res = VisitTurnResponse(
+                        session_id=session.session_id,
+                        transcript="",
+                        record=session.record,
+                        flags=session.flags,
+                        risk_flags=session.record.risk_flags,
+                        referral_suggested=session.record.referral_suggested,
+                        status="error_retry",
+                        followup=None,
+                        visit_type_code=session.visit_type,
+                        schema_version=load_visit_config(session.visit_type).schema_version,
+                    )
+                else:
+                    assigned_ids = get_assigned_ids(session.asha_id)
+                    repo = get_v2_repository(store)
+                    assigned_ids |= repo.list_local_codes_for_worker(session.asha_id)
+                    result = await process_transcript(
+                        transcript,
+                        resolved_lang,
+                        session.visit_type,
+                        existing_record=session.record,
+                        assigned_ids=assigned_ids,
+                        settings=settings,
+                        client=http_client,
+                    )
+                    turn_res = await _finalize_visit_result(
+                        session,
+                        result,
+                        prev_snapshot,
+                        resolved_lang,
+                        store=store,
+                        settings=settings,
+                        http_client=http_client,
+                    )
+
+                await websocket.send_json(
+                    {
+                        "type": "fields",
+                        "session_id": turn_res.session_id,
+                        "transcript": turn_res.transcript,
+                        "record": turn_res.record.model_dump(mode="json"),
+                        "flags": [f.model_dump(mode="json") for f in turn_res.flags],
+                        "risk_flags": turn_res.risk_flags,
+                        "referral_suggested": turn_res.referral_suggested,
+                        "status": turn_res.status,
+                        "visit_type_code": turn_res.visit_type_code,
+                        "schema_version": turn_res.schema_version,
+                    }
+                )
+                if turn_res.followup is not None:
+                    await websocket.send_json(
+                        {
+                            "type": "followup",
+                            "session_id": turn_res.session_id,
+                            "question_text": turn_res.followup.question_text,
+                            "question_audio_url": turn_res.followup.question_audio_url,
+                            "target_fields": turn_res.followup.target_fields,
+                            "followup_count": turn_res.followup.followup_count,
+                        }
+                    )
+    except WebSocketDisconnect:
+        pass
+    except ApiError as exc:
+        with contextlib.suppress(Exception):
+            await websocket.send_json(
+                {"type": "error", "code": exc.code, "message": exc.message}
+            )
+    except Exception as exc:
+        with contextlib.suppress(Exception):
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "code": "STT_STREAM_FAILED",
+                    "message": f"Streaming pipeline failed: {exc}",
+                }
+            )
+    finally:
+        reader_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError, Exception):
+            await reader_task
+        with contextlib.suppress(Exception):
+            await upstream.close()
