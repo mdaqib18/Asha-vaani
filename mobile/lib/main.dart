@@ -12,6 +12,9 @@ Future<void> main() async {
   final sharedPrefs = await SharedPreferences.getInstance();
   final prefs = PrefsService(sharedPrefs);
   final appState = AppState(prefs: prefs);
+  try {
+    await appState.syncService.start();
+  } catch (_) {}
   runApp(AshaVaaniApp(appState: appState));
 }
 

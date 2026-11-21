@@ -41,6 +41,7 @@ abstract class AshaApiClient {
   Future<String> confirmVisit(String sessionId);
   Future<ReadbackResponse> getReadback(String sessionId, String language);
   Future<List<VisitSummary>> getSavedVisits(String ashaId);
+  Future<List<SyncItemResult>> syncOfflineQueue(List<SyncBatchItem> items);
 }
 
 class DioAshaApiClient implements AshaApiClient {
@@ -232,6 +233,23 @@ class DioAshaApiClient implements AshaApiClient {
       return items
           .whereType<Map<String, dynamic>>()
           .map(VisitSummary.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  @override
+  Future<List<SyncItemResult>> syncOfflineQueue(List<SyncBatchItem> items) async {
+    try {
+      final resp = await _dio.post<Map<String, dynamic>>(
+        '/v1/sync',
+        data: items.map((e) => e.toJson()).toList(),
+      );
+      final rawResults = resp.data?['results'] as List<dynamic>? ?? const [];
+      return rawResults
+          .whereType<Map<String, dynamic>>()
+          .map(SyncItemResult.fromJson)
           .toList();
     } on DioException catch (e) {
       throw _mapError(e);

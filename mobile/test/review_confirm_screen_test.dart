@@ -2,7 +2,6 @@ import 'package:asha_vaani/l10n/app_strings.dart';
 import 'package:asha_vaani/models/beneficiary.dart';
 import 'package:asha_vaani/models/newborn_visit.dart';
 import 'package:asha_vaani/screens/review_confirm_screen.dart';
-import 'package:asha_vaani/state/app_state.dart';
 import 'package:asha_vaani/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,9 +12,8 @@ void main() {
   testWidgets('highlights flagged fields, shows referral banner, patches edit, and confirms',
       (tester) async {
     final fakeApi = FakeAshaApiClient();
-    final appState = AppState(
-      apiClient: fakeApi,
-      recorder: FakeAudioCaptureService(),
+    final appState = makeTestAppState(
+      api: fakeApi,
       initialLanguage: AppLanguage.en,
       initialProfile: AshaProfile.defaults.first,
     );

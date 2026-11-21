@@ -38,6 +38,9 @@ dependencies:
   permission_handler: ^11.4.0 # Runtime Android RECORD_AUDIO permission handling
   shared_preferences: ^2.5.2 # Persist stub ASHA profile, language, and backend URL
   just_audio: ^0.9.46       # Plays Gnani Timbre MP3 follow-up and read-back audio
+  sqflite: ^2.4.2            # Local SQLite store (beneficiaries, drafts, queue, visits)
+  path: ^1.9.1               # Cross-platform SQLite database file path joining
+  connectivity_plus: ^6.1.3  # Connectivity change monitoring for automatic offline sync
 
 dev_dependencies:
   flutter_test:

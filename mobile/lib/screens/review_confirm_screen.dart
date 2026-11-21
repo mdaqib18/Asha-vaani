@@ -610,6 +610,7 @@ class _ReviewConfirmScreenState extends State<ReviewConfirmScreen> {
     setState(() => _saving = true);
     try {
       await widget.appState.api.confirmVisit(widget.initialTurn.sessionId);
+      await widget.appState.localDb.deleteDraft(widget.initialTurn.sessionId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(widget.appState.strings.visitSaved)),

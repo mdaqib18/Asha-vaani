@@ -24,6 +24,7 @@ class _BeneficiaryListScreenState extends State<BeneficiaryListScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<Beneficiary> _items = const [];
   bool _loading = true;
+  bool _isOfflineCached = false;
   String? _errorText;
   String _query = '';
   String? _loadedForAsha;
@@ -58,18 +59,34 @@ class _BeneficiaryListScreenState extends State<BeneficiaryListScreen> {
     setState(() {
       _loading = true;
       _errorText = null;
+      _isOfflineCached = false;
       _loadedForAsha = ashaId;
       _loadedForUrl = widget.appState.baseUrl;
     });
 
     try {
       final list = await widget.appState.api.getBeneficiaries(ashaId);
+      await widget.appState.localDb.cacheBeneficiaries(ashaId, list);
       if (!mounted) return;
       setState(() {
         _items = list;
+        _isOfflineCached = false;
         _loading = false;
       });
     } on ApiException catch (e) {
+      if (e.code == 'NETWORK_ERROR' || e.code == 'TIMEOUT') {
+        final cached = await widget.appState.localDb.getCachedBeneficiaries(ashaId);
+        if (!mounted) return;
+        if (cached.isNotEmpty) {
+          setState(() {
+            _items = cached;
+            _isOfflineCached = true;
+            _errorText = null;
+            _loading = false;
+          });
+          return;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _errorText = widget.appState.strings.friendlyError(e.code, e.message);
@@ -129,7 +146,43 @@ class _BeneficiaryListScreenState extends State<BeneficiaryListScreen> {
           ),
         ),
         Expanded(
-          child: _buildBody(filtered),
+          child: Column(
+            children: [
+              if (_isOfflineCached)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceSubtle,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.cloud_off_rounded,
+                          size: 16,
+                          color: AppColors.inkSecondary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            strings.offlineShowingCached,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.inkSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              Expanded(child: _buildBody(filtered)),
+            ],
+          ),
         ),
       ],
     );

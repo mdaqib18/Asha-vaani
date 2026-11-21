@@ -1,6 +1,5 @@
 import 'package:asha_vaani/l10n/app_strings.dart';
 import 'package:asha_vaani/main.dart';
-import 'package:asha_vaani/state/app_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -10,9 +9,8 @@ void main() {
   testWidgets('login stub selects worker, switches languages, and searches beneficiaries',
       (tester) async {
     final fakeApi = FakeAshaApiClient();
-    final appState = AppState(
-      apiClient: fakeApi,
-      recorder: FakeAudioCaptureService(),
+    final appState = makeTestAppState(
+      api: fakeApi,
       initialLanguage: AppLanguage.en,
     );
 

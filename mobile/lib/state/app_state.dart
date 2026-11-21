@@ -5,7 +5,9 @@ import '../models/beneficiary.dart';
 import '../services/api_client.dart';
 import '../services/audio_player_service.dart';
 import '../services/audio_recorder_service.dart';
+import '../services/local_db_service.dart';
 import '../services/prefs_service.dart';
+import '../services/sync_service.dart';
 
 class AppState extends ChangeNotifier {
   AppState({
@@ -13,6 +15,9 @@ class AppState extends ChangeNotifier {
     AshaApiClient? apiClient,
     AudioCaptureService? recorder,
     AudioPlaybackService? audioPlayer,
+    LocalDbService? localDb,
+    ConnectivityMonitor? connectivity,
+    SyncService? syncService,
     AppLanguage initialLanguage = AppLanguage.hi,
     AshaProfile? initialProfile,
     String initialBaseUrl = PrefsService.defaultBaseUrl,
@@ -26,11 +31,21 @@ class AppState extends ChangeNotifier {
         _apiClient = apiClient ??
             DioAshaApiClient(baseUrl: prefs?.baseUrl ?? initialBaseUrl),
         _recorder = recorder ?? RecordAudioCaptureService(),
-        _audioPlayer = audioPlayer ?? JustAudioPlaybackService();
+        _audioPlayer = audioPlayer ?? JustAudioPlaybackService(),
+        _localDb = localDb ?? SqfliteLocalDbService() {
+    _syncService = syncService ??
+        SyncService(
+          localDb: _localDb,
+          apiProvider: () => _apiClient,
+          connectivity: connectivity ?? PlusConnectivityMonitor(),
+        );
+  }
 
   final PrefsService? _prefs;
   final AudioCaptureService _recorder;
   final AudioPlaybackService _audioPlayer;
+  final LocalDbService _localDb;
+  late final SyncService _syncService;
 
   AppLanguage _language;
   AshaProfile? _selectedProfile;
@@ -44,6 +59,8 @@ class AppState extends ChangeNotifier {
   AshaApiClient get api => _apiClient;
   AudioCaptureService get recorder => _recorder;
   AudioPlaybackService get audioPlayer => _audioPlayer;
+  LocalDbService get localDb => _localDb;
+  SyncService get syncService => _syncService;
 
   Future<void> setLanguage(AppLanguage lang) async {
     if (_language == lang) return;

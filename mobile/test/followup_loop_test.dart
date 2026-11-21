@@ -3,7 +3,6 @@ import 'package:asha_vaani/models/beneficiary.dart';
 import 'package:asha_vaani/models/newborn_visit.dart';
 import 'package:asha_vaani/screens/record_visit_screen.dart';
 import 'package:asha_vaani/screens/review_confirm_screen.dart';
-import 'package:asha_vaani/state/app_state.dart';
 import 'package:asha_vaani/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,8 +15,8 @@ void main() {
     final fakeApi = FakeAshaApiClient();
     final fakeRecorder = FakeAudioCaptureService();
     final fakePlayer = FakeAudioPlaybackService();
-    final appState = AppState(
-      apiClient: fakeApi,
+    final appState = makeTestAppState(
+      api: fakeApi,
       recorder: fakeRecorder,
       audioPlayer: fakePlayer,
       initialLanguage: AppLanguage.en,
@@ -127,8 +126,8 @@ void main() {
     final fakeApi = FakeAshaApiClient();
     final fakeRecorder = FakeAudioCaptureService();
     final fakePlayer = FakeAudioPlaybackService();
-    final appState = AppState(
-      apiClient: fakeApi,
+    final appState = makeTestAppState(
+      api: fakeApi,
       recorder: fakeRecorder,
       audioPlayer: fakePlayer,
       initialLanguage: AppLanguage.en,
@@ -179,9 +178,8 @@ void main() {
       (tester) async {
     final fakeApi = FakeAshaApiClient();
     final fakePlayer = FakeAudioPlaybackService();
-    final appState = AppState(
-      apiClient: fakeApi,
-      recorder: FakeAudioCaptureService(),
+    final appState = makeTestAppState(
+      api: fakeApi,
       audioPlayer: fakePlayer,
       initialLanguage: AppLanguage.en,
       initialProfile: AshaProfile.defaults.first,

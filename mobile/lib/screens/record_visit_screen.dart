@@ -34,6 +34,7 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
   bool _autoListening = false;
   bool _playingQuestion = false;
   bool _uploading = false;
+  bool _savedOffline = false;
   bool _permissionGranted = false;
   bool _permanentlyDenied = false;
   String? _statusMessage;
@@ -174,12 +175,13 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
 
     setState(() {
       _uploading = true;
+      _savedOffline = false;
       _statusMessage = null;
       _isErrorMessage = false;
     });
 
+    final isFollowupTurn = _activeSessionId != null && _activeFollowup != null;
     try {
-      final isFollowupTurn = _activeSessionId != null && _activeFollowup != null;
       final turn = isFollowupTurn
           ? await widget.appState.api.submitFollowupAnswer(
               sessionId: _activeSessionId!,
@@ -199,6 +201,24 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
 
       await _handleTurnResponse(turn);
     } on ApiException catch (e) {
+      if (!isFollowupTurn && (e.code == 'NETWORK_ERROR' || e.code == 'TIMEOUT')) {
+        try {
+          await widget.appState.syncService.saveRecordingOffline(
+            tempFilePath: filePath,
+            ashaId: profile.id,
+            beneficiary: widget.beneficiary,
+            language: widget.appState.language.code,
+          );
+          if (!mounted) return;
+          setState(() {
+            _uploading = false;
+            _savedOffline = true;
+          });
+          return;
+        } catch (_) {
+          // Fall back to standard error banner if offline save itself fails.
+        }
+      }
       _cleanupTempFile(filePath);
       if (!mounted) return;
       setState(() {
@@ -408,7 +428,14 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
                   else
                     _IconCueStrip(appState: widget.appState),
                   const Spacer(),
-                  if (!_permissionGranted)
+                  if (_savedOffline)
+                    _SavedOfflineCard(
+                      title: strings.savedOfflineTitle,
+                      subtitle: strings.savedOfflineSubtitle,
+                      buttonLabel: strings.done,
+                      onDone: () => Navigator.of(context).pop(true),
+                    )
+                  else if (!_permissionGranted)
                     _PermissionPromptCard(
                       message: strings.micPermissionNeeded,
                       buttonLabel: _permanentlyDenied
@@ -759,6 +786,68 @@ class _PermissionPromptCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SavedOfflineCard extends StatelessWidget {
+  const _SavedOfflineCard({
+    required this.title,
+    required this.subtitle,
+    required this.buttonLabel,
+    required this.onDone,
+  });
+
+  final String title;
+  final String subtitle;
+  final String buttonLabel;
+  final VoidCallback onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: AppColors.warningBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.warningBorder),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.cloud_off_rounded,
+            size: 44,
+            color: AppColors.warningText,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.warningText,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.inkPrimary,
+            ),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: onDone,
+              child: Text(buttonLabel),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -42,6 +42,15 @@ void main() {
       expect(s.skipToReview.trim(), isNotEmpty);
       expect(s.followupStep(1).trim(), isNotEmpty);
       expect(s.playingReadback.trim(), isNotEmpty);
+      expect(s.savedOfflineTitle.trim(), isNotEmpty);
+      expect(s.savedOfflineSubtitle.trim(), isNotEmpty);
+      expect(s.offlineShowingCached.trim(), isNotEmpty);
+      expect(s.pendingBadge.trim(), isNotEmpty);
+      expect(s.readyToReviewBadge.trim(), isNotEmpty);
+      expect(s.syncNow.trim(), isNotEmpty);
+      expect(s.syncing.trim(), isNotEmpty);
+      expect(s.pendingSyncBanner(2).trim(), isNotEmpty);
+      expect(s.done.trim(), isNotEmpty);
       expect(s.friendlyError('NETWORK_ERROR').trim(), isNotEmpty);
       expect(s.friendlyError('TIMEOUT').trim(), isNotEmpty);
       expect(s.friendlyError('INVALID_AUDIO').trim(), isNotEmpty);

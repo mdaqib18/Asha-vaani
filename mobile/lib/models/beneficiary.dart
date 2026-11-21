@@ -10,6 +10,8 @@ class Beneficiary {
       label: json['label'] as String? ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() => {'id': id, 'label': label};
 }
 
 class AshaProfile {

@@ -100,26 +100,40 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: const BoxDecoration(
               border: Border(top: BorderSide(color: AppColors.border)),
             ),
-            child: NavigationBar(
-              selectedIndex: _tabIndex,
-              onDestinationSelected: (idx) {
-                if (idx == 1) {
-                  _savedRefreshSignal.value += 1;
-                }
-                setState(() => _tabIndex = idx);
+            child: ListenableBuilder(
+              listenable: widget.appState.syncService,
+              builder: (context, _) {
+                final pendingCount = widget.appState.syncService.pendingCount;
+                return NavigationBar(
+                  selectedIndex: _tabIndex,
+                  onDestinationSelected: (idx) {
+                    if (idx == 1) {
+                      _savedRefreshSignal.value += 1;
+                    }
+                    setState(() => _tabIndex = idx);
+                  },
+                  destinations: [
+                    NavigationDestination(
+                      icon: const Icon(Icons.people_outline_rounded),
+                      selectedIcon: const Icon(Icons.people_rounded),
+                      label: strings.beneficiariesTab,
+                    ),
+                    NavigationDestination(
+                      icon: Badge.count(
+                        count: pendingCount,
+                        isLabelVisible: pendingCount > 0,
+                        child: const Icon(Icons.check_circle_outline_rounded),
+                      ),
+                      selectedIcon: Badge.count(
+                        count: pendingCount,
+                        isLabelVisible: pendingCount > 0,
+                        child: const Icon(Icons.check_circle_rounded),
+                      ),
+                      label: strings.savedVisitsTab,
+                    ),
+                  ],
+                );
               },
-              destinations: [
-                NavigationDestination(
-                  icon: const Icon(Icons.people_outline_rounded),
-                  selectedIcon: const Icon(Icons.people_rounded),
-                  label: strings.beneficiariesTab,
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.check_circle_outline_rounded),
-                  selectedIcon: const Icon(Icons.check_circle_rounded),
-                  label: strings.savedVisitsTab,
-                ),
-              ],
             ),
           ),
         );

@@ -1,13 +1,22 @@
 import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:asha_vaani/l10n/app_strings.dart';
 import 'package:asha_vaani/models/beneficiary.dart';
 import 'package:asha_vaani/models/newborn_visit.dart';
 import 'package:asha_vaani/services/api_client.dart';
 import 'package:asha_vaani/services/audio_player_service.dart';
 import 'package:asha_vaani/services/audio_recorder_service.dart';
+import 'package:asha_vaani/services/local_db_service.dart';
+import 'package:asha_vaani/services/sync_service.dart';
+import 'package:asha_vaani/state/app_state.dart';
 
 class FakeAshaApiClient implements AshaApiClient {
   bool healthy = true;
+  ApiException? beneficiariesError;
+  ApiException? uploadError;
+  ApiException? savedVisitsError;
+
   List<Beneficiary> beneficiaries = const [
     Beneficiary(id: '1042', label: 'Baby of Sunita (synthetic)'),
     Beneficiary(id: '1043', label: 'Baby of Kavita (synthetic)'),
@@ -21,10 +30,12 @@ class FakeAshaApiClient implements AshaApiClient {
     text: 'Please confirm. Beneficiary ID 1042, weight 2.5 kg, temperature 37.0 degrees Celsius.',
     audioUrl: '/v1/audio/readback-1',
   );
+  List<SyncItemResult> Function(List<SyncBatchItem> items)? onSyncBatch;
 
   final List<Map<String, dynamic>> answerCalls = [];
   final List<Map<String, dynamic>> patchCalls = [];
   final List<String> confirmCalls = [];
+  final List<List<SyncBatchItem>> syncCalls = [];
 
   @override
   String resolveAudioUrl(String pathOrUrl) {
@@ -38,7 +49,10 @@ class FakeAshaApiClient implements AshaApiClient {
   Future<bool> checkHealth() async => healthy;
 
   @override
-  Future<List<Beneficiary>> getBeneficiaries(String ashaId) async => beneficiaries;
+  Future<List<Beneficiary>> getBeneficiaries(String ashaId) async {
+    if (beneficiariesError != null) throw beneficiariesError!;
+    return beneficiaries;
+  }
 
   @override
   Future<VisitTurnResponse> uploadVisitAudio({
@@ -49,6 +63,7 @@ class FakeAshaApiClient implements AshaApiClient {
     String? sessionId,
     String visitType = 'newborn_home_visit',
   }) async {
+    if (uploadError != null) throw uploadError!;
     return nextUploadResponse!;
   }
 
@@ -99,7 +114,38 @@ class FakeAshaApiClient implements AshaApiClient {
   }
 
   @override
-  Future<List<VisitSummary>> getSavedVisits(String ashaId) async => savedVisits;
+  Future<List<VisitSummary>> getSavedVisits(String ashaId) async {
+    if (savedVisitsError != null) throw savedVisitsError!;
+    return savedVisits;
+  }
+
+  @override
+  Future<List<SyncItemResult>> syncOfflineQueue(List<SyncBatchItem> items) async {
+    syncCalls.add(items);
+    if (onSyncBatch != null) {
+      return onSyncBatch!(items);
+    }
+    return items
+        .map(
+          (item) => SyncItemResult(
+            clientId: item.clientId,
+            ok: true,
+            result: VisitTurnResponse(
+              sessionId: 'synced-${item.clientId}',
+              transcript: 'Beneficiary ${item.beneficiaryId} weight 2.5 kg',
+              record: NewbornVisitRecord(
+                beneficiaryId: ExtractedField(
+                  value: item.beneficiaryId ?? '1042',
+                  source: 'selected',
+                ),
+                babyWeightKg: const ExtractedField(value: 2.5),
+              ),
+              status: 'ready_to_confirm',
+            ),
+          ),
+        )
+        .toList();
+  }
 }
 
 class FakeAudioCaptureService implements AudioCaptureService {
@@ -147,4 +193,156 @@ class FakeAudioPlaybackService implements AudioPlaybackService {
 
   @override
   void dispose() {}
+}
+
+class FakeLocalDbService implements LocalDbService {
+  final Map<String, List<Beneficiary>> beneficiariesByAsha = {};
+  final Map<String, QueuedAudioItem> queue = {};
+  final Map<String, LocalDraft> drafts = {};
+  final Map<String, List<VisitSummary>> visitsByAsha = {};
+
+  @override
+  Future<void> cacheBeneficiaries(String ashaId, List<Beneficiary> items) async {
+    beneficiariesByAsha[ashaId] = List.of(items);
+  }
+
+  @override
+  Future<List<Beneficiary>> getCachedBeneficiaries(String ashaId) async {
+    return List.of(beneficiariesByAsha[ashaId] ?? const []);
+  }
+
+  @override
+  Future<void> enqueueAudio(QueuedAudioItem item) async {
+    queue[item.clientId] = item;
+  }
+
+  @override
+  Future<List<QueuedAudioItem>> getPendingQueue({String? ashaId}) async {
+    return queue.values
+        .where((i) => i.status == 'pending' && (ashaId == null || i.ashaId == ashaId))
+        .toList();
+  }
+
+  @override
+  Future<void> markQueueSynced(String clientId) async {
+    final existing = queue[clientId];
+    if (existing != null) {
+      queue[clientId] = QueuedAudioItem(
+        clientId: existing.clientId,
+        ashaId: existing.ashaId,
+        beneficiaryId: existing.beneficiaryId,
+        beneficiaryLabel: existing.beneficiaryLabel,
+        audioPath: existing.audioPath,
+        language: existing.language,
+        visitType: existing.visitType,
+        status: 'synced',
+        recordedAt: existing.recordedAt,
+      );
+    }
+  }
+
+  @override
+  Future<void> markQueueError(
+    String clientId,
+    String message, {
+    bool permanent = false,
+  }) async {
+    final existing = queue[clientId];
+    if (existing != null) {
+      queue[clientId] = QueuedAudioItem(
+        clientId: existing.clientId,
+        ashaId: existing.ashaId,
+        beneficiaryId: existing.beneficiaryId,
+        beneficiaryLabel: existing.beneficiaryLabel,
+        audioPath: existing.audioPath,
+        language: existing.language,
+        visitType: existing.visitType,
+        status: permanent ? 'error_permanent' : 'pending',
+        recordedAt: existing.recordedAt,
+        lastError: message,
+      );
+    }
+  }
+
+  @override
+  Future<void> saveDraft(LocalDraft draft) async {
+    drafts[draft.sessionId] = draft;
+  }
+
+  @override
+  Future<List<LocalDraft>> getDrafts({String? ashaId}) async {
+    return drafts.values
+        .where((d) => ashaId == null || d.ashaId == ashaId)
+        .toList();
+  }
+
+  @override
+  Future<void> deleteDraft(String sessionId) async {
+    drafts.remove(sessionId);
+  }
+
+  @override
+  Future<void> cacheVisits(String ashaId, List<VisitSummary> visits) async {
+    visitsByAsha[ashaId] = List.of(visits);
+  }
+
+  @override
+  Future<List<VisitSummary>> getCachedVisits(String ashaId) async {
+    return List.of(visitsByAsha[ashaId] ?? const []);
+  }
+}
+
+class FakeConnectivityMonitor implements ConnectivityMonitor {
+  FakeConnectivityMonitor({bool initialOnline = true}) : _online = initialOnline;
+
+  final StreamController<bool> _controller = StreamController<bool>.broadcast();
+  bool _online;
+
+  void emitOnline(bool online) {
+    _online = online;
+    _controller.add(online);
+  }
+
+  @override
+  Stream<bool> get onOnlineChanged => _controller.stream;
+
+  @override
+  Future<bool> isOnline() async => _online;
+
+  @override
+  void dispose() {
+    _controller.close();
+  }
+}
+
+AppState makeTestAppState({
+  required FakeAshaApiClient api,
+  FakeAudioCaptureService? recorder,
+  FakeAudioPlaybackService? audioPlayer,
+  FakeLocalDbService? localDb,
+  FakeConnectivityMonitor? connectivity,
+  AppLanguage initialLanguage = AppLanguage.en,
+  AshaProfile? initialProfile,
+}) {
+  final db = localDb ?? FakeLocalDbService();
+  final conn = connectivity ?? FakeConnectivityMonitor();
+  final deletedPaths = <String>[];
+  final sync = SyncService(
+    localDb: db,
+    apiProvider: () => api,
+    connectivity: conn,
+    persistAudioFile: (tempPath, clientId) async => '/offline/$clientId.wav',
+    readAudioBytes: (path) async => Uint8List.fromList([82, 73, 70, 70]),
+    deleteAudioFile: (path) async => deletedPaths.add(path),
+  );
+  return AppState(
+    apiClient: api,
+    recorder: recorder ?? FakeAudioCaptureService(),
+    audioPlayer: audioPlayer ?? FakeAudioPlaybackService(),
+    localDb: db,
+    connectivity: conn,
+    syncService: sync,
+    initialLanguage: initialLanguage,
+    initialProfile: initialProfile,
+  );
 }

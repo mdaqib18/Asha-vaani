@@ -125,6 +125,49 @@ class AppStrings {
         kn: 'ANM / ವೈದ್ಯರ ಸಲಹೆ',
       );
 
+  // Offline & Sync
+  String get savedOfflineTitle => _pick(
+        en: 'Saved offline',
+        hi: 'ऑफ़लाइन सहेजा गया',
+        kn: 'ಆಫ್‌ಲೈನ್‌ನಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ',
+      );
+  String get savedOfflineSubtitle => _pick(
+        en: 'Will sync automatically when internet returns.',
+        hi: 'इंटरनेट आने पर अपने आप सिंक हो जाएगा।',
+        kn: 'ಇಂಟರ್ನೆಟ್ ಬಂದಾಗ ತಾನಾಗಿಯೇ ಸಿಂಕ್ ಆಗುತ್ತದೆ.',
+      );
+  String get offlineShowingCached => _pick(
+        en: 'Offline — showing saved list',
+        hi: 'ऑफ़लाइन — सहेजी गई सूची',
+        kn: 'ಆಫ್‌ಲೈನ್ — ಉಳಿಸಿದ ಪಟ್ಟಿ',
+      );
+  String get pendingBadge => _pick(
+        en: 'Pending',
+        hi: 'बाकी',
+        kn: 'ಬಾಕಿ ಇದೆ',
+      );
+  String get readyToReviewBadge => _pick(
+        en: 'Ready to review',
+        hi: 'जांच के लिए तैयार',
+        kn: 'ಪರಿಶೀಲನೆಗೆ ಸಿದ್ಧ',
+      );
+  String get syncNow => _pick(
+        en: 'Sync now',
+        hi: 'अभी सिंक करें',
+        kn: 'ಈಗ ಸಿಂಕ್ ಮಾಡಿ',
+      );
+  String get syncing => _pick(
+        en: 'Syncing...',
+        hi: 'सिंक हो रहा है...',
+        kn: 'ಸಿಂಕ್ ಆಗುತ್ತಿದೆ...',
+      );
+  String pendingSyncBanner(int count) => _pick(
+        en: '$count recording(s) waiting to sync',
+        hi: '$count रिकॉर्डिंग सिंक के लिए बाकी हैं',
+        kn: '$count ರೆಕಾರ್ಡಿಂಗ್ ಸಿಂಕ್ ಆಗಲು ಬಾಕಿ ಇವೆ',
+      );
+  String get done => _pick(en: 'Done', hi: 'ठीक है', kn: 'ಮುಗಿಯಿತು');
+
   // Record Screen
   String get recordVisitTitle => _pick(
         en: 'Record Visit',

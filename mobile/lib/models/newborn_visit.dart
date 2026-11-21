@@ -24,6 +24,16 @@ class ExtractedField<T> {
       needsConfirmation: json['needs_confirmation'] as bool? ?? false,
     );
   }
+
+  Map<String, dynamic> toJson([Object? Function(T value)? encodeValue]) {
+    final val = value;
+    return {
+      'value': val == null ? null : (encodeValue != null ? encodeValue(val) : val),
+      'confidence': confidence,
+      'source': source,
+      'needs_confirmation': needsConfirmation,
+    };
+  }
 }
 
 class LimbAbnormality {
@@ -141,6 +151,27 @@ class NewbornVisitRecord {
       referralSuggested: json['referral_suggested'] as bool? ?? false,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (beneficiaryId != null) 'beneficiary_id': beneficiaryId!.toJson(),
+      if (visitDate != null) 'visit_date': visitDate,
+      if (babyWeightKg != null) 'baby_weight_kg': babyWeightKg!.toJson(),
+      if (temperatureC != null) 'temperature_c': temperatureC!.toJson(),
+      if (breastfeeding != null) 'breastfeeding': breastfeeding!.toJson(),
+      if (cordStatus != null) 'cord_status': cordStatus!.toJson(),
+      if (jaundice != null) 'jaundice': jaundice!.toJson(),
+      if (breathingRatePerMin != null)
+        'breathing_rate_per_min': breathingRatePerMin!.toJson(),
+      if (limbAbnormality != null)
+        'limb_abnormality': limbAbnormality!.toJson((v) => v.toJson()),
+      if (dangerSigns != null) 'danger_signs': dangerSigns!.toJson(),
+      if (motherNotes != null) 'mother_notes': motherNotes!.toJson(),
+      if (notes != null) 'notes': notes!.toJson(),
+      'risk_flags': riskFlags,
+      'referral_suggested': referralSuggested,
+    };
+  }
 }
 
 class ValidationFlag {
@@ -155,6 +186,8 @@ class ValidationFlag {
       reason: json['reason'] as String? ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() => {'field': field, 'reason': reason};
 }
 
 class FollowupPayload {
@@ -180,6 +213,15 @@ class FollowupPayload {
           const [],
       followupCount: (json['followup_count'] as num?)?.toInt() ?? 0,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'question_text': questionText,
+      if (questionAudioUrl != null) 'question_audio_url': questionAudioUrl,
+      'target_fields': targetFields,
+      'followup_count': followupCount,
+    };
   }
 }
 
@@ -225,6 +267,19 @@ class VisitTurnResponse {
           ? FollowupPayload.fromJson(json['followup'] as Map<String, dynamic>)
           : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'session_id': sessionId,
+      'transcript': transcript,
+      'record': record.toJson(),
+      'flags': flags.map((f) => f.toJson()).toList(),
+      'risk_flags': riskFlags,
+      'referral_suggested': referralSuggested,
+      'status': status,
+      if (followup != null) 'followup': followup!.toJson(),
+    };
   }
 }
 
@@ -313,6 +368,83 @@ class VisitSummary {
       referralSuggested: json['referral_suggested'] as bool? ?? false,
       status: json['status'] as String? ?? 'saved',
       updatedAt: json['updated_at'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (visitId != null) 'visit_id': visitId,
+      'session_id': sessionId,
+      if (beneficiaryId != null) 'beneficiary_id': beneficiaryId,
+      if (visitDate != null) 'visit_date': visitDate,
+      'risk_flags': riskFlags,
+      'referral_suggested': referralSuggested,
+      'status': status,
+      'updated_at': updatedAt,
+    };
+  }
+}
+
+class SyncBatchItem {
+  const SyncBatchItem({
+    required this.clientId,
+    required this.audioBase64,
+    this.filename = 'recording.wav',
+    required this.language,
+    this.visitType = 'newborn_home_visit',
+    this.beneficiaryId,
+    this.ashaId = 'asha_001',
+    this.recordedAt,
+  });
+
+  final String clientId;
+  final String audioBase64;
+  final String filename;
+  final String language;
+  final String visitType;
+  final String? beneficiaryId;
+  final String ashaId;
+  final String? recordedAt;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'client_id': clientId,
+      'audio_base64': audioBase64,
+      'filename': filename,
+      'language': language,
+      'visit_type': visitType,
+      if (beneficiaryId != null) 'beneficiary_id': beneficiaryId,
+      'asha_id': ashaId,
+      if (recordedAt != null) 'recorded_at': recordedAt,
+    };
+  }
+}
+
+class SyncItemResult {
+  const SyncItemResult({
+    required this.clientId,
+    required this.ok,
+    this.result,
+    this.errorCode,
+    this.errorMessage,
+  });
+
+  final String clientId;
+  final bool ok;
+  final VisitTurnResponse? result;
+  final String? errorCode;
+  final String? errorMessage;
+
+  factory SyncItemResult.fromJson(Map<String, dynamic> json) {
+    final err = json['error'] as Map<String, dynamic>?;
+    return SyncItemResult(
+      clientId: json['client_id'] as String? ?? '',
+      ok: json['ok'] as bool? ?? false,
+      result: json['result'] is Map<String, dynamic>
+          ? VisitTurnResponse.fromJson(json['result'] as Map<String, dynamic>)
+          : null,
+      errorCode: err?['code']?.toString(),
+      errorMessage: err?['message']?.toString(),
     );
   }
 }

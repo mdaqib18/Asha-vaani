@@ -27,7 +27,7 @@ Voice-first Android companion for ASHA (community health) workers to record stru
 │   │   ├── l10n/           # Centralized EN / HI / KN strings
 │   │   ├── models/         # Dart mirrors of backend schemas
 │   │   ├── screens/        # Login, home, beneficiaries, record, review, saved visits
-│   │   ├── services/       # Dio API client, 16 kHz WAV recorder, just_audio TTS player, prefs
+│   │   ├── services/       # Dio API client, 16 kHz WAV recorder, just_audio TTS player, SQLite & sync, prefs
 │   │   ├── state/          # AppState ChangeNotifier
 │   │   ├── theme/          # High-contrast Clinical Teal Material 3 theme
 │   │   └── widgets/        # Language toggle & server settings sheet
@@ -62,7 +62,7 @@ Check health: `GET http://127.0.0.1:8000/v1/health`
 - [x] **Milestone 4:** Follow-up engine + Gnani Timbre TTS wiring + SQLite store + FastAPI visit routes — live verified
 - [x] **Milestone 5:** Flutter app (login stub, beneficiary list, push-to-talk record, upload, review & confirm)
 - [x] **Milestone 6:** Follow-up loop in app (TTS question playback, auto-open mic, read-back audio)
-- [ ] **Milestone 7:** Offline queue and sync
+- [x] **Milestone 7:** Offline queue and sync
 - [ ] **Milestone 8:** Evaluation run & noise tests
 - [ ] **Milestone 9:** Polish, demo video, pitch
 
