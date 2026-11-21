@@ -37,6 +37,7 @@ dependencies:
   path_provider: ^2.1.5      # Temporary file directory for recorded .wav clips
   permission_handler: ^11.4.0 # Runtime Android RECORD_AUDIO permission handling
   shared_preferences: ^2.5.2 # Persist stub ASHA profile, language, and backend URL
+  just_audio: ^0.9.46       # Plays Gnani Timbre MP3 follow-up and read-back audio
 
 dev_dependencies:
   flutter_test:

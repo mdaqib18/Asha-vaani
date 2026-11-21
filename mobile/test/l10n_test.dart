@@ -36,6 +36,12 @@ void main() {
       expect(s.referralBannerTitle.trim(), isNotEmpty);
       expect(s.confirmAndSave.trim(), isNotEmpty);
       expect(s.readBack.trim(), isNotEmpty);
+      expect(s.statusPlayingQuestion.trim(), isNotEmpty);
+      expect(s.tapWhenDone.trim(), isNotEmpty);
+      expect(s.replayQuestion.trim(), isNotEmpty);
+      expect(s.skipToReview.trim(), isNotEmpty);
+      expect(s.followupStep(1).trim(), isNotEmpty);
+      expect(s.playingReadback.trim(), isNotEmpty);
       expect(s.friendlyError('NETWORK_ERROR').trim(), isNotEmpty);
       expect(s.friendlyError('TIMEOUT').trim(), isNotEmpty);
       expect(s.friendlyError('INVALID_AUDIO').trim(), isNotEmpty);

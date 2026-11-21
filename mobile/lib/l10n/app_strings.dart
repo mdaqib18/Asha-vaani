@@ -156,6 +156,36 @@ class AppStrings {
         hi: 'प्रोसेस हो रहा है...',
         kn: 'ಪ್ರಕ್ರಿಯೆಯಲ್ಲಿದೆ...',
       );
+  String get statusPlayingQuestion => _pick(
+        en: 'Asking follow-up...',
+        hi: 'सवाल पूछा जा रहा है...',
+        kn: 'ಪ್ರಶ್ನೆ ಕೇಳಲಾಗುತ್ತಿದೆ...',
+      );
+  String get tapWhenDone => _pick(
+        en: 'Tap when done',
+        hi: 'बोलने के बाद दबाएं',
+        kn: 'ಮುಗಿದ ನಂತರ ಒತ್ತಿ',
+      );
+  String get replayQuestion => _pick(
+        en: 'Replay',
+        hi: 'दोबारा सुनें',
+        kn: 'ಮತ್ತೆ ಕೇಳಿ',
+      );
+  String get skipToReview => _pick(
+        en: 'Review now',
+        hi: 'अभी जांचें',
+        kn: 'ಈಗಲೇ ಪರಿಶೀಲಿಸಿ',
+      );
+  String followupStep(int count) => _pick(
+        en: 'Follow-up $count of 2',
+        hi: 'सवाल $count / 2',
+        kn: 'ಪ್ರಶ್ನೆ $count / 2',
+      );
+  String get playingReadback => _pick(
+        en: 'Reading aloud...',
+        hi: 'पढ़कर सुनाया जा रहा है...',
+        kn: 'ಓದಿ ಕೇಳಿಸಲಾಗುತ್ತಿದೆ...',
+      );
   String get holdLongerHint => _pick(
         en: 'Hold the mic button while speaking',
         hi: 'बोलते समय बटन दबाए रखें',

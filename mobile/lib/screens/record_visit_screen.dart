@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../models/beneficiary.dart';
+import '../models/newborn_visit.dart';
 import '../services/api_client.dart';
 import '../services/audio_recorder_service.dart';
 import '../state/app_state.dart';
@@ -30,15 +31,23 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
   static const int _minHoldMilliseconds = 500;
 
   bool _recording = false;
+  bool _autoListening = false;
+  bool _playingQuestion = false;
   bool _uploading = false;
   bool _permissionGranted = false;
   bool _permanentlyDenied = false;
   String? _statusMessage;
   bool _isErrorMessage = false;
 
+  String? _activeSessionId;
+  VisitTurnResponse? _latestTurn;
+  FollowupPayload? _activeFollowup;
+  int _playbackToken = 0;
+
   Timer? _timer;
+  Timer? _minHoldTimer;
   int _elapsedSeconds = 0;
-  DateTime? _recordStartedAt;
+  bool _heldLongEnough = false;
   String? _activeFilePath;
 
   @override
@@ -49,7 +58,10 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
 
   @override
   void dispose() {
+    _playbackToken += 1;
     _timer?.cancel();
+    _minHoldTimer?.cancel();
+    widget.appState.audioPlayer.stop();
     super.dispose();
   }
 
@@ -63,27 +75,45 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
   }
 
   Future<void> _startHoldRecording() async {
-    if (_uploading || _recording) return;
+    if (_uploading || _recording || _playingQuestion || _autoListening) return;
 
     if (!_permissionGranted) {
       await _checkMicPermission();
       return;
     }
 
+    await _beginRecording(autoListening: false);
+  }
+
+  Future<void> _startAutoFollowupRecording() async {
+    if (!mounted || _uploading || _recording || !_permissionGranted) return;
+    await _beginRecording(autoListening: true);
+  }
+
+  Future<void> _beginRecording({required bool autoListening}) async {
     try {
       final path = await widget.appState.recorder.createTempWavPath();
       await widget.appState.recorder.startRecording(path);
       if (!mounted) return;
 
       _timer?.cancel();
+      _minHoldTimer?.cancel();
       setState(() {
         _activeFilePath = path;
         _recording = true;
+        _autoListening = autoListening;
         _elapsedSeconds = 0;
-        _recordStartedAt = DateTime.now();
+        _heldLongEnough = autoListening;
         _statusMessage = null;
         _isErrorMessage = false;
       });
+
+      if (!autoListening) {
+        _minHoldTimer = Timer(
+          const Duration(milliseconds: _minHoldMilliseconds),
+          () => _heldLongEnough = true,
+        );
+      }
 
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (!mounted || !_recording) {
@@ -92,24 +122,29 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
         }
         setState(() => _elapsedSeconds += 1);
         if (_elapsedSeconds >= _maxDurationSeconds) {
-          _stopAndUpload();
+          _stopAndUpload(checkMinHold: false);
         }
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _recording = false;
+        _autoListening = false;
         _statusMessage = widget.appState.strings.friendlyError('INVALID_AUDIO');
         _isErrorMessage = true;
       });
     }
   }
 
-  Future<void> _stopAndUpload() async {
+  Future<void> _stopAndUpload({required bool checkMinHold}) async {
     if (!_recording) return;
     _timer?.cancel();
-    final startedAt = _recordStartedAt;
-    setState(() => _recording = false);
+    _minHoldTimer?.cancel();
+    final heldEnough = _heldLongEnough;
+    setState(() {
+      _recording = false;
+      _autoListening = false;
+    });
 
     String? recordedPath;
     try {
@@ -118,11 +153,8 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
       recordedPath = _activeFilePath;
     }
     final pathToUse = recordedPath ?? _activeFilePath;
-    final heldMs = startedAt == null
-        ? 0
-        : DateTime.now().difference(startedAt).inMilliseconds;
 
-    if (heldMs < _minHoldMilliseconds || pathToUse == null) {
+    if (checkMinHold && (!heldEnough || pathToUse == null)) {
       _cleanupTempFile(pathToUse);
       if (!mounted) return;
       setState(() {
@@ -132,6 +164,7 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
       return;
     }
 
+    if (pathToUse == null) return;
     await _uploadAudio(pathToUse);
   }
 
@@ -146,35 +179,25 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
     });
 
     try {
-      final turn = await widget.appState.api.uploadVisitAudio(
-        filePath: filePath,
-        language: widget.appState.language.code,
-        ashaId: profile.id,
-        beneficiaryId: widget.beneficiary.id,
-      );
+      final isFollowupTurn = _activeSessionId != null && _activeFollowup != null;
+      final turn = isFollowupTurn
+          ? await widget.appState.api.submitFollowupAnswer(
+              sessionId: _activeSessionId!,
+              filePath: filePath,
+              language: widget.appState.language.code,
+            )
+          : await widget.appState.api.uploadVisitAudio(
+              filePath: filePath,
+              language: widget.appState.language.code,
+              ashaId: profile.id,
+              beneficiaryId: widget.beneficiary.id,
+              sessionId: _activeSessionId,
+            );
       _cleanupTempFile(filePath);
       if (!mounted) return;
       setState(() => _uploading = false);
 
-      if (turn.status == 'error_retry') {
-        setState(() {
-          _statusMessage = widget.appState.strings.friendlyError('ERROR_RETRY');
-          _isErrorMessage = true;
-        });
-        return;
-      }
-
-      final saved = await Navigator.of(context).push<bool>(
-        MaterialPageRoute<bool>(
-          builder: (_) => ReviewConfirmScreen(
-            appState: widget.appState,
-            initialTurn: turn,
-          ),
-        ),
-      );
-      if (saved == true && mounted) {
-        Navigator.of(context).pop(true);
-      }
+      await _handleTurnResponse(turn);
     } on ApiException catch (e) {
       _cleanupTempFile(filePath);
       if (!mounted) return;
@@ -183,6 +206,106 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
         _statusMessage = widget.appState.strings.friendlyError(e.code, e.message);
         _isErrorMessage = true;
       });
+    }
+  }
+
+  Future<void> _handleTurnResponse(VisitTurnResponse turn) async {
+    if (turn.status == 'error_retry') {
+      setState(() {
+        _statusMessage = widget.appState.strings.friendlyError('ERROR_RETRY');
+        _isErrorMessage = true;
+      });
+      return;
+    }
+
+    setState(() {
+      _activeSessionId = turn.sessionId;
+      _latestTurn = turn;
+    });
+
+    if (turn.status == 'needs_followup' && turn.followup != null) {
+      setState(() => _activeFollowup = turn.followup);
+      await _playQuestionAndOpenMic(turn.followup!);
+      return;
+    }
+
+    setState(() => _activeFollowup = null);
+    await _openReviewScreen(turn);
+  }
+
+  Future<void> _playQuestionAndOpenMic(FollowupPayload followup) async {
+    final myToken = ++_playbackToken;
+    if (_recording) {
+      _timer?.cancel();
+      setState(() {
+        _recording = false;
+        _autoListening = false;
+      });
+      try {
+        final droppedPath = await widget.appState.recorder.stopRecording();
+        _cleanupTempFile(droppedPath ?? _activeFilePath);
+      } catch (_) {}
+    }
+
+    final audioUrl = followup.questionAudioUrl;
+    if (audioUrl != null && audioUrl.isNotEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _playingQuestion = true;
+        _statusMessage = null;
+      });
+      try {
+        await widget.appState.audioPlayer.playUrl(
+          widget.appState.api.resolveAudioUrl(audioUrl),
+        );
+      } catch (_) {
+        // Proceed to mic capture even if TTS playback fails on device.
+      }
+      if (!mounted || myToken != _playbackToken) return;
+      setState(() => _playingQuestion = false);
+    }
+
+    if (!mounted || myToken != _playbackToken) return;
+    await _startAutoFollowupRecording();
+  }
+
+  Future<void> _skipToReview() async {
+    final turn = _latestTurn;
+    if (turn == null) return;
+    _playbackToken += 1;
+    _timer?.cancel();
+    if (_recording) {
+      setState(() {
+        _recording = false;
+        _autoListening = false;
+      });
+      try {
+        final droppedPath = await widget.appState.recorder.stopRecording();
+        _cleanupTempFile(droppedPath ?? _activeFilePath);
+      } catch (_) {}
+    }
+    if (_playingQuestion) {
+      setState(() => _playingQuestion = false);
+      await widget.appState.audioPlayer.stop();
+    }
+    if (!mounted) return;
+    await _openReviewScreen(turn);
+  }
+
+  Future<void> _openReviewScreen(VisitTurnResponse turn) async {
+    _playbackToken += 1;
+    await widget.appState.audioPlayer.stop();
+    if (!mounted) return;
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => ReviewConfirmScreen(
+          appState: widget.appState,
+          initialTurn: turn,
+        ),
+      ),
+    );
+    if (saved == true && mounted) {
+      Navigator.of(context).pop(true);
     }
   }
 
@@ -209,7 +332,9 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
         final strings = widget.appState.strings;
         final statusLabel = _uploading
             ? strings.statusProcessing
-            : (_recording ? strings.statusListening : strings.statusReady);
+            : (_playingQuestion
+                ? strings.statusPlayingQuestion
+                : (_recording ? strings.statusListening : strings.statusReady));
 
         return Scaffold(
           appBar: AppBar(
@@ -225,11 +350,17 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
             ],
           ),
           body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -264,7 +395,18 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  _IconCueStrip(appState: widget.appState),
+                  if (_activeFollowup != null)
+                    _FollowupQuestionCard(
+                      stepLabel: strings.followupStep(_activeFollowup!.followupCount),
+                      questionText: _activeFollowup!.questionText,
+                      replayLabel: strings.replayQuestion,
+                      reviewLabel: strings.skipToReview,
+                      canReplay: !_uploading && !_playingQuestion,
+                      onReplay: () => _playQuestionAndOpenMic(_activeFollowup!),
+                      onSkipToReview: _skipToReview,
+                    )
+                  else
+                    _IconCueStrip(appState: widget.appState),
                   const Spacer(),
                   if (!_permissionGranted)
                     _PermissionPromptCard(
@@ -290,7 +432,7 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
                         decoration: BoxDecoration(
                           color: _recording
                               ? AppColors.riskBg
-                              : (_uploading
+                              : ((_uploading || _playingQuestion)
                                   ? AppColors.primaryTint
                                   : AppColors.surfaceSubtle),
                           borderRadius: BorderRadius.circular(20),
@@ -306,73 +448,24 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
                             fontWeight: FontWeight.w700,
                             color: _recording
                                 ? AppColors.riskText
-                                : (_uploading
+                                : ((_uploading || _playingQuestion)
                                     ? AppColors.primaryDark
                                     : AppColors.inkSecondary),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    Center(
-                      child: Listener(
-                        key: const ValueKey('push_to_talk_button'),
-                        onPointerDown: (_) => _startHoldRecording(),
-                        onPointerUp: (_) => _stopAndUpload(),
-                        onPointerCancel: (_) => _stopAndUpload(),
-                        child: AnimatedScale(
-                          scale: _recording ? 1.07 : 1.0,
-                          duration: const Duration(milliseconds: 140),
-                          child: Container(
-                            width: 164,
-                            height: 164,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: _recording
-                                  ? AppColors.riskBg
-                                  : AppColors.primaryTint,
-                            ),
-                            child: Center(
-                              child: Container(
-                                width: 132,
-                                height: 132,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: _uploading
-                                      ? AppColors.surfaceSubtle
-                                      : (_recording
-                                          ? AppColors.riskText
-                                          : AppColors.primary),
-                                ),
-                                child: Center(
-                                  child: _uploading
-                                      ? const SizedBox(
-                                          width: 34,
-                                          height: 34,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 3,
-                                            color: AppColors.primary,
-                                          ),
-                                        )
-                                      : Icon(
-                                          _recording
-                                              ? Icons.mic_rounded
-                                              : Icons.mic_none_rounded,
-                                          size: 52,
-                                          color: Colors.white,
-                                        ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
+                    Center(child: _buildMicButton()),
+                    const SizedBox(height: 14),
                     Text(
-                      _recording
-                          ? '${strings.releaseToSend} · ${_formatTimer(_elapsedSeconds)}'
-                          : strings.holdToSpeak,
+                      _autoListening
+                          ? '${strings.tapWhenDone} · ${_formatTimer(_elapsedSeconds)}'
+                          : (_recording
+                              ? '${strings.releaseToSend} · ${_formatTimer(_elapsedSeconds)}'
+                              : (_playingQuestion
+                                  ? strings.statusPlayingQuestion
+                                  : strings.holdToSpeak)),
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
@@ -421,11 +514,161 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
                       ),
                     ),
                 ],
-              ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildMicButton() {
+    final outerColor = _recording
+        ? AppColors.riskBg
+        : AppColors.primaryTint;
+    final innerColor = (_uploading || _playingQuestion)
+        ? AppColors.surfaceSubtle
+        : (_recording ? AppColors.riskText : AppColors.primary);
+
+    final circle = AnimatedScale(
+      scale: _recording ? 1.07 : 1.0,
+      duration: const Duration(milliseconds: 140),
+      child: Container(
+        width: 164,
+        height: 164,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: outerColor),
+        child: Center(
+          child: Container(
+            width: 132,
+            height: 132,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: innerColor),
+            child: Center(
+              child: _uploading
+                  ? const SizedBox(
+                      width: 34,
+                      height: 34,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: AppColors.primary,
+                      ),
+                    )
+                  : Icon(
+                      _playingQuestion
+                          ? Icons.volume_up_rounded
+                          : (_autoListening
+                              ? Icons.stop_rounded
+                              : (_recording
+                                  ? Icons.mic_rounded
+                                  : Icons.mic_none_rounded)),
+                      size: 52,
+                      color: _playingQuestion ? AppColors.primary : Colors.white,
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (_autoListening) {
+      return GestureDetector(
+        key: const ValueKey('stop_followup_button'),
+        onTap: () => _stopAndUpload(checkMinHold: false),
+        child: circle,
+      );
+    }
+
+    if (_uploading || _playingQuestion) {
+      return IgnorePointer(child: circle);
+    }
+
+    return Listener(
+      key: const ValueKey('push_to_talk_button'),
+      onPointerDown: (_) => _startHoldRecording(),
+      onPointerUp: (_) => _stopAndUpload(checkMinHold: true),
+      onPointerCancel: (_) => _stopAndUpload(checkMinHold: true),
+      child: circle,
+    );
+  }
+}
+
+class _FollowupQuestionCard extends StatelessWidget {
+  const _FollowupQuestionCard({
+    required this.stepLabel,
+    required this.questionText,
+    required this.replayLabel,
+    required this.reviewLabel,
+    required this.canReplay,
+    required this.onReplay,
+    required this.onSkipToReview,
+  });
+
+  final String stepLabel;
+  final String questionText;
+  final String replayLabel;
+  final String reviewLabel;
+  final bool canReplay;
+  final VoidCallback onReplay;
+  final VoidCallback onSkipToReview;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primaryTint,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              stepLabel,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primaryDark,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            questionText,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: AppColors.inkPrimary,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: canReplay ? onReplay : null,
+                icon: const Icon(Icons.volume_up_outlined, size: 18),
+                label: Text(replayLabel),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: onSkipToReview,
+                child: Text(reviewLabel),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

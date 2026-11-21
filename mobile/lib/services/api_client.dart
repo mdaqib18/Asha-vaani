@@ -17,6 +17,7 @@ class ApiException implements Exception {
 }
 
 abstract class AshaApiClient {
+  String resolveAudioUrl(String pathOrUrl);
   Future<bool> checkHealth();
   Future<List<Beneficiary>> getBeneficiaries(String ashaId);
   Future<VisitTurnResponse> uploadVisitAudio({
@@ -26,6 +27,11 @@ abstract class AshaApiClient {
     String? beneficiaryId,
     String? sessionId,
     String visitType = 'newborn_home_visit',
+  });
+  Future<VisitTurnResponse> submitFollowupAnswer({
+    required String sessionId,
+    required String filePath,
+    required String language,
   });
   Future<RecordPatchResponse> patchVisitRecord(
     String sessionId,
@@ -48,6 +54,16 @@ class DioAshaApiClient implements AshaApiClient {
         );
 
   final Dio _dio;
+
+  @override
+  String resolveAudioUrl(String pathOrUrl) {
+    final trimmed = pathOrUrl.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    final normalizedPath = trimmed.startsWith('/') ? trimmed : '/$trimmed';
+    return '${_dio.options.baseUrl}$normalizedPath';
+  }
 
   static String _normalizeBaseUrl(String url) {
     var trimmed = url.trim();
@@ -131,6 +147,29 @@ class DioAshaApiClient implements AshaApiClient {
 
       final resp = await _dio.post<Map<String, dynamic>>(
         '/v1/visits/audio',
+        data: formData,
+      );
+      return VisitTurnResponse.fromJson(resp.data ?? const {});
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  @override
+  Future<VisitTurnResponse> submitFollowupAnswer({
+    required String sessionId,
+    required String filePath,
+    required String language,
+  }) async {
+    try {
+      final filename = filePath.split(RegExp(r'[/\\]')).last;
+      final formData = FormData.fromMap({
+        'audio': await MultipartFile.fromFile(filePath, filename: filename),
+        'language': language,
+      });
+
+      final resp = await _dio.post<Map<String, dynamic>>(
+        '/v1/visits/$sessionId/answer',
         data: formData,
       );
       return VisitTurnResponse.fromJson(resp.data ?? const {});

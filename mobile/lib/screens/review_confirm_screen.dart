@@ -65,6 +65,12 @@ class _ReviewConfirmScreenState extends State<ReviewConfirmScreen> {
     _followup = widget.initialTurn.followup;
   }
 
+  @override
+  void dispose() {
+    widget.appState.audioPlayer.stop();
+    super.dispose();
+  }
+
   ValidationFlag? _flagFor(String field) {
     for (final f in _flags) {
       if (f.field == field) return f;
@@ -583,17 +589,12 @@ class _ReviewConfirmScreenState extends State<ReviewConfirmScreen> {
       setState(() => _readingBack = false);
       await showDialog<void>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(widget.appState.strings.readBack),
-          content: Text(res.text),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: Text(widget.appState.strings.ok),
-            ),
-          ],
+        builder: (ctx) => _ReadbackDialog(
+          appState: widget.appState,
+          readback: res,
         ),
       );
+      await widget.appState.audioPlayer.stop();
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _readingBack = false);
@@ -973,6 +974,103 @@ class _EditableFieldCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ReadbackDialog extends StatefulWidget {
+  const _ReadbackDialog({required this.appState, required this.readback});
+
+  final AppState appState;
+  final ReadbackResponse readback;
+
+  @override
+  State<_ReadbackDialog> createState() => _ReadbackDialogState();
+}
+
+class _ReadbackDialogState extends State<_ReadbackDialog> {
+  bool _playing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.readback.audioUrl != null &&
+        widget.readback.audioUrl!.isNotEmpty) {
+      _play();
+    }
+  }
+
+  Future<void> _play() async {
+    final rawUrl = widget.readback.audioUrl;
+    if (rawUrl == null || rawUrl.isEmpty) return;
+    setState(() => _playing = true);
+    try {
+      await widget.appState.audioPlayer.playUrl(
+        widget.appState.api.resolveAudioUrl(rawUrl),
+      );
+    } catch (_) {
+      // Text remains visible even if playback fails.
+    } finally {
+      if (mounted) {
+        setState(() => _playing = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.appState.audioPlayer.stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = widget.appState.strings;
+    final hasAudio = widget.readback.audioUrl != null &&
+        widget.readback.audioUrl!.isNotEmpty;
+
+    return AlertDialog(
+      title: Text(strings.readBack),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(widget.readback.text),
+          if (_playing) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(
+                  Icons.volume_up_rounded,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  strings.playingReadback,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        if (hasAudio && !_playing)
+          TextButton.icon(
+            onPressed: _play,
+            icon: const Icon(Icons.volume_up_outlined, size: 18),
+            label: Text(strings.replayQuestion),
+          ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(strings.ok),
+        ),
+      ],
     );
   }
 }

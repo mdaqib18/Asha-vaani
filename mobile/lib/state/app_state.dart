@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../l10n/app_strings.dart';
 import '../models/beneficiary.dart';
 import '../services/api_client.dart';
+import '../services/audio_player_service.dart';
 import '../services/audio_recorder_service.dart';
 import '../services/prefs_service.dart';
 
@@ -11,6 +12,7 @@ class AppState extends ChangeNotifier {
     PrefsService? prefs,
     AshaApiClient? apiClient,
     AudioCaptureService? recorder,
+    AudioPlaybackService? audioPlayer,
     AppLanguage initialLanguage = AppLanguage.hi,
     AshaProfile? initialProfile,
     String initialBaseUrl = PrefsService.defaultBaseUrl,
@@ -23,10 +25,12 @@ class AppState extends ChangeNotifier {
         _baseUrl = prefs?.baseUrl ?? initialBaseUrl,
         _apiClient = apiClient ??
             DioAshaApiClient(baseUrl: prefs?.baseUrl ?? initialBaseUrl),
-        _recorder = recorder ?? RecordAudioCaptureService();
+        _recorder = recorder ?? RecordAudioCaptureService(),
+        _audioPlayer = audioPlayer ?? JustAudioPlaybackService();
 
   final PrefsService? _prefs;
   final AudioCaptureService _recorder;
+  final AudioPlaybackService _audioPlayer;
 
   AppLanguage _language;
   AshaProfile? _selectedProfile;
@@ -39,6 +43,7 @@ class AppState extends ChangeNotifier {
   String get baseUrl => _baseUrl;
   AshaApiClient get api => _apiClient;
   AudioCaptureService get recorder => _recorder;
+  AudioPlaybackService get audioPlayer => _audioPlayer;
 
   Future<void> setLanguage(AppLanguage lang) async {
     if (_language == lang) return;
