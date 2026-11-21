@@ -14,9 +14,10 @@ Voice-first Android companion for ASHA (community health) workers to record stru
 │   │   ├── config/         # Visit type YAML thresholds & rules
 │   │   ├── core/           # Settings, API error envelope, YAML loader
 │   │   ├── data/           # Synthetic beneficiary data
+│   │   ├── prompts/        # LLM system prompts (extractor.md)
 │   │   ├── schemas/        # Pydantic v2 models
-│   │   └── services/       # Normalizer, validator, risk rules, Gnani STT/TTS
-│   ├── scripts/            # CLI smoke checks (stt_check.py, tts_check.py)
+│   │   └── services/       # Normalizer, validator, risk rules, Gnani STT/TTS, Gemini LLM, pipeline
+│   ├── scripts/            # CLI smoke checks (stt_check.py, tts_check.py, extract_check.py)
 │   ├── tests/
 │   ├── requirements.txt
 │   └── .env.example
@@ -45,8 +46,8 @@ Check health: `GET http://127.0.0.1:8000/v1/health`
 ## Milestone Status
 
 - [x] **Milestone 1:** Backend skeleton, schema, config, normalizer, validator, risk rules + unit tests
-- [x] **Milestone 2:** Gnani Prisma STT (+ Timbre TTS client) — client done, live test pending
-- [ ] **Milestone 3:** Gemini LLM extraction + validation
+- [x] **Milestone 2:** Gnani Prisma STT (+ Timbre TTS client) — live verified
+- [x] **Milestone 3:** Gemini LLM extraction + validation — implemented & unit-tested (107 passing); live Gemini check blocked on AI Studio `402` billing
 - [ ] **Milestone 4:** Follow-up engine + Gnani Timbre TTS wiring
 - [ ] **Milestone 5:** Flutter app (beneficiary list, record, upload, review)
 - [ ] **Milestone 6:** Follow-up loop in app

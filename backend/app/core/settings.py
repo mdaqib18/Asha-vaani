@@ -13,9 +13,11 @@ class Settings(BaseSettings):
     GNANI_TTS_MODEL: str = "timbre-v3.0"
     GNANI_TTS_VOICE: str = "Lakshmi"
     GNANI_TIMEOUT_S: float = 30.0
-    LLM_PROVIDER: str | None = None
+    LLM_PROVIDER: str = "gemini"
     LLM_API_KEY: str | None = None
-    LLM_MODEL: str | None = None
+    LLM_MODEL: str = "gemini-2.5-flash"
+    LLM_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta"
+    LLM_TIMEOUT_S: float = 30.0
     DATABASE_URL: str = "sqlite:///./ashavaani.db"
     MAX_FOLLOWUPS: int = 2
 

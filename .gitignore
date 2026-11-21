@@ -8,8 +8,10 @@ __pycache__/
 .pytest_cache/
 *.db
 
-# Evaluation Audio
+# Evaluation & Local Smoke Audio
 eval/audio/
+backend/*.mp3
+backend/*.wav
 
 # Flutter / IDE
 mobile/build/
