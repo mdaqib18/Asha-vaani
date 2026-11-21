@@ -22,6 +22,16 @@ Voice-first Android companion for ASHA (community health) workers to record stru
 │   ├── tests/
 │   ├── requirements.txt
 │   └── .env.example
+├── mobile/                 # Flutter Android app
+│   ├── lib/
+│   │   ├── l10n/           # Centralized EN / HI / KN strings
+│   │   ├── models/         # Dart mirrors of backend schemas
+│   │   ├── screens/        # Login, home, beneficiaries, record, review, saved visits
+│   │   ├── services/       # Dio API client, 16 kHz WAV recorder, prefs
+│   │   ├── state/          # AppState ChangeNotifier
+│   │   ├── theme/          # High-contrast Clinical Teal Material 3 theme
+│   │   └── widgets/        # Language toggle & server settings sheet
+│   └── test/
 └── README.md
 ```
 
@@ -50,7 +60,7 @@ Check health: `GET http://127.0.0.1:8000/v1/health`
 - [x] **Milestone 2:** Gnani Prisma STT (+ Timbre TTS client) — live verified
 - [x] **Milestone 3:** Gemini LLM extraction + validation — live verified (LLM_MODEL from .env, tested on gemini-3.5-flash)
 - [x] **Milestone 4:** Follow-up engine + Gnani Timbre TTS wiring + SQLite store + FastAPI visit routes — live verified
-- [ ] **Milestone 5:** Flutter app (beneficiary list, record, upload, review)
+- [x] **Milestone 5:** Flutter app (login stub, beneficiary list, push-to-talk record, upload, review & confirm)
 - [ ] **Milestone 6:** Follow-up loop in app
 - [ ] **Milestone 7:** Offline queue and sync
 - [ ] **Milestone 8:** Evaluation run & noise tests
