@@ -1,0 +1,46 @@
+# TODO(verify): thresholds and required fields against official HBNC guidance / ASHA worker / ANM.
+visit_type: newborn_home_visit
+
+required_fields:
+  - beneficiary_id
+  - baby_weight_kg
+  - temperature_c
+  - breastfeeding
+  - cord_status
+  - jaundice
+  - limb_abnormality
+
+ranges:
+  baby_weight_kg:
+    min: 0.5
+    max: 6.0
+  temperature_c:
+    min: 34.0
+    max: 41.0
+  breathing_rate_per_min:
+    min: 20
+    max: 100
+
+risk_thresholds:
+  low_birth_weight_kg_below: 2.5
+  fever_c_at_or_above: 37.5
+  hypothermia_c_below: 35.5
+  fast_breathing_above: 60
+
+# TODO(verify): confirm which risk flags trigger referral_suggested per HBNC guidelines.
+high_risk_flags:
+  - low_birth_weight
+  - fever
+  - hypothermia
+  - fast_breathing
+  - cord_infection
+  - not_feeding
+  - jaundice
+  - limb_abnormality
+  - danger_sign
+
+# Fields read back to the worker for confirmation (SPEC §8.5)
+confirm_always:
+  - beneficiary_id
+  - baby_weight_kg
+  - temperature_c

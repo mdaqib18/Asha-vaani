@@ -1,0 +1,21 @@
+# Environment & Secrets
+.env
+
+# Python / Backend
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+
+# Evaluation Audio
+eval/audio/
+
+# Flutter / IDE
+mobile/build/
+mobile/.dart_tool/
+mobile/.packages
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+.idea/
+.vscode/
