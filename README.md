@@ -14,9 +14,10 @@ Voice-first Android companion for ASHA (community health) workers to record stru
 │   │   ├── config/         # Visit type YAML thresholds & rules
 │   │   ├── core/           # Settings, API error envelope, YAML loader
 │   │   ├── data/           # Synthetic beneficiary data
-│   │   ├── prompts/        # LLM system prompts (extractor.md)
-│   │   ├── schemas/        # Pydantic v2 models
-│   │   └── services/       # Normalizer, validator, risk rules, Gnani STT/TTS, Gemini LLM, pipeline
+│   │   ├── db/             # SQLite session, audio clip, and sync persistence
+│   │   ├── prompts/        # LLM system prompts (extractor.md, followup.md)
+│   │   ├── schemas/        # Pydantic v2 domain & API models (newborn_visit.py, api.py)
+│   │   └── services/       # Normalizer, validator, risk rules, follow-up, Gnani STT/TTS, Gemini LLM, pipeline
 │   ├── scripts/            # CLI smoke checks (stt_check.py, tts_check.py, extract_check.py)
 │   ├── tests/
 │   ├── requirements.txt
@@ -48,7 +49,7 @@ Check health: `GET http://127.0.0.1:8000/v1/health`
 - [x] **Milestone 1:** Backend skeleton, schema, config, normalizer, validator, risk rules + unit tests
 - [x] **Milestone 2:** Gnani Prisma STT (+ Timbre TTS client) — live verified
 - [x] **Milestone 3:** Gemini LLM extraction + validation — live verified (LLM_MODEL from .env, tested on gemini-3.5-flash)
-- [ ] **Milestone 4:** Follow-up engine + Gnani Timbre TTS wiring
+- [x] **Milestone 4:** Follow-up engine + Gnani Timbre TTS wiring + SQLite store + FastAPI visit routes — live verified
 - [ ] **Milestone 5:** Flutter app (beneficiary list, record, upload, review)
 - [ ] **Milestone 6:** Follow-up loop in app
 - [ ] **Milestone 7:** Offline queue and sync
