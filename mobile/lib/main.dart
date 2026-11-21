@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'screens/component_gallery_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/prefs_service.dart';
@@ -29,6 +30,9 @@ class AshaVaaniApp extends StatelessWidget {
       title: 'Asha Vaani',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme(),
+      routes: {
+        '/gallery': (_) => const ComponentGalleryScreen(),
+      },
       home: ListenableBuilder(
         listenable: appState,
         builder: (context, _) {

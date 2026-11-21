@@ -1,159 +1,187 @@
 import 'package:flutter/material.dart';
 
+import 'tokens.dart';
+
+/// Compatibility palette aliases backed by V2 [AppTokens.standard].
+///
+/// New widgets and screens must read `AppTokens.of(context)` directly.
 class AppColors {
   AppColors._();
 
-  static const Color canvas = Color(0xFFF7F9F8);
+  static const Color canvas = Color(0xFFFAF8F4);
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceSubtle = Color(0xFFF0F4F2);
-  static const Color border = Color(0xFFE2E8E5);
+  static const Color surfaceSubtle = Color(0xFFF3EFE8);
+  static const Color border = Color(0xFFE3DED5);
 
-  static const Color primary = Color(0xFF0F6B5D);
-  static const Color primaryDark = Color(0xFF0A4F44);
-  static const Color primaryTint = Color(0xFFE6F3F0);
+  static const Color primary = Color(0xFF0B5D5E);
+  static const Color primaryDark = Color(0xFF074748);
+  static const Color primaryTint = Color(0xFFD6EBEA);
 
-  static const Color inkPrimary = Color(0xFF101B18);
-  static const Color inkSecondary = Color(0xFF4E5F5A);
+  static const Color inkPrimary = Color(0xFF14201F);
+  static const Color inkSecondary = Color(0xFF51615F);
 
-  static const Color warningText = Color(0xFFB45309);
-  static const Color warningBg = Color(0xFFFEF3C7);
-  static const Color warningBorder = Color(0xFFF59E0B);
+  static const Color warningText = Color(0xFF9A5B00);
+  static const Color warningBg = Color(0xFFFFF4E0);
+  static const Color warningBorder = Color(0xFFC8741A);
 
-  static const Color riskText = Color(0xFFB91C1C);
-  static const Color riskBg = Color(0xFFFEE2E2);
-  static const Color riskBorder = Color(0xFFDC2626);
+  static const Color riskText = Color(0xFFB3261E);
+  static const Color riskBg = Color(0xFFFDECEB);
+  static const Color riskBorder = Color(0xFFB3261E);
 
-  static const Color successText = Color(0xFF15803D);
-  static const Color successBg = Color(0xFFDCFCE7);
+  static const Color successText = Color(0xFF1F7A4D);
+  static const Color successBg = Color(0xFFE8F5EE);
 }
 
 class AppTheme {
   AppTheme._();
 
-  static ThemeData lightTheme() {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.primary,
-      brightness: Brightness.light,
-      surface: AppColors.surface,
-      primary: AppColors.primary,
+  static ThemeData lightTheme({bool highContrast = false}) {
+    final tokens = highContrast ? AppTokens.highContrast : AppTokens.standard;
+    final colorScheme = ColorScheme.light(
+      primary: tokens.primary,
       onPrimary: Colors.white,
-      error: AppColors.riskText,
+      primaryContainer: tokens.primaryContainer,
+      onPrimaryContainer: tokens.ink,
+      secondary: tokens.accent,
+      onSecondary: Colors.white,
+      surface: tokens.surfaceRaised,
+      onSurface: tokens.ink,
+      onSurfaceVariant: tokens.inkMuted,
+      outline: tokens.outline,
+      error: tokens.riskHigh,
+      onError: Colors.white,
     );
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: AppTypography.fontFamily,
+      fontFamilyFallback: AppTypography.fontFamilyFallback,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.canvas,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.canvas,
-        foregroundColor: AppColors.inkPrimary,
+      scaffoldBackgroundColor: tokens.surface,
+      dividerColor: tokens.outline,
+      extensions: [tokens],
+      appBarTheme: AppBarTheme(
+        backgroundColor: tokens.surface,
+        foregroundColor: tokens.ink,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: TextStyle(
-          color: AppColors.inkPrimary,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.2,
-        ),
+        titleTextStyle: AppTypography.title(tokens.ink),
       ),
       cardTheme: CardThemeData(
-        color: AppColors.surface,
+        color: tokens.surfaceRaised,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: AppColors.border, width: 1),
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          side: BorderSide(
+            color: tokens.outline,
+            width: AppSizes.borderWidth,
+          ),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.primary,
+          backgroundColor: tokens.primary,
           foregroundColor: Colors.white,
-          minimumSize: const Size(0, 56),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.1,
+          minimumSize: const Size(
+            AppSizes.minTouchTarget,
+            AppSizes.minTouchTarget,
           ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.button),
+          ),
+          textStyle: AppTypography.bodySemiBold(),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          minimumSize: const Size(0, 56),
-          side: const BorderSide(color: AppColors.border, width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+          foregroundColor: tokens.primary,
+          minimumSize: const Size(
+            AppSizes.minTouchTarget,
+            AppSizes.minTouchTarget,
           ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
+          side: BorderSide(
+            color: tokens.outline,
+            width: AppSizes.borderWidth,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.button),
+          ),
+          textStyle: AppTypography.bodySemiBold(),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: tokens.primary,
+          minimumSize: const Size(
+            AppSizes.minTouchTarget,
+            AppSizes.minTouchTarget,
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          textStyle: AppTypography.label(),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        fillColor: tokens.surfaceRaised,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderRadius: BorderRadius.circular(AppRadius.input),
+          borderSide: BorderSide(color: tokens.outline),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderRadius: BorderRadius.circular(AppRadius.input),
+          borderSide: BorderSide(color: tokens.outline),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
+          borderRadius: BorderRadius.circular(AppRadius.input),
+          borderSide: BorderSide(color: tokens.primary, width: 1.8),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AppColors.surface,
+        backgroundColor: tokens.surfaceRaised,
         elevation: 0,
         height: 72,
-        indicatorColor: AppColors.primaryTint,
+        indicatorColor: tokens.primaryContainer,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
-          return TextStyle(
-            fontSize: 13,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: selected ? AppColors.primaryDark : AppColors.inkSecondary,
-          );
+          return AppTypography.label(selected ? tokens.primary : tokens.inkMuted)
+              .copyWith(fontWeight: selected ? FontWeight.w600 : FontWeight.w400);
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: selected ? AppColors.primaryDark : AppColors.inkSecondary,
-            size: 24,
+            color: selected ? tokens.primary : tokens.inkMuted,
+            size: AppSizes.icon,
           );
         }),
       ),
-      textTheme: const TextTheme(
-        headlineSmall: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-          color: AppColors.inkPrimary,
-          letterSpacing: -0.3,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: AppColors.inkPrimary,
-        ),
-        bodyLarge: TextStyle(
-          fontSize: 16,
-          color: AppColors.inkPrimary,
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 14,
-          color: AppColors.inkSecondary,
-        ),
-        labelMedium: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: AppColors.inkSecondary,
-        ),
+      textTheme: TextTheme(
+        displaySmall: AppTypography.display(tokens.ink),
+        headlineSmall: AppTypography.title(tokens.ink),
+        titleLarge: AppTypography.heading(tokens.ink),
+        titleMedium: AppTypography.bodySemiBold(tokens.ink),
+        bodyLarge: AppTypography.body(tokens.ink),
+        bodyMedium: AppTypography.body(tokens.inkMuted),
+        bodySmall: AppTypography.caption(tokens.inkMuted),
+        labelLarge: AppTypography.label(tokens.ink),
+        labelMedium: AppTypography.label(tokens.inkMuted),
+        labelSmall: AppTypography.caption(tokens.inkMuted),
       ),
     );
   }
