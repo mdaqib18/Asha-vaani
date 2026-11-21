@@ -247,3 +247,26 @@ def test_merge_records_protects_selected_and_merges_complex_fields() -> None:
     assert merged.limb_abnormality.value.location == LimbLocation.left_leg
     assert merged.danger_signs.value == [DangerSign.lethargy, DangerSign.fever]
     assert merged.notes.value == "Baby sleepy; Swelling noticed"
+
+
+def test_extract_canonicalizes_generic_limb_ambiguity_field() -> None:
+    llm_out = json.dumps(
+        {
+            "limb_abnormality": {
+                "value": {"present": True, "location": "unspecified"},
+                "confidence": 0.9,
+            },
+            "ambiguities": [
+                {"field": "limb_abnormality", "reason": "Which limb is affected is unclear"}
+            ],
+        }
+    )
+
+    async def _run():
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _r: _gemini_json_response(llm_out))
+        ) as client:
+            return await extract("limb problem ide", "kn", settings=_settings(), client=client, retry_delay_s=0)
+
+    result = asyncio.run(_run())
+    assert [a.field for a in result.ambiguities] == ["limb_abnormality.location"]

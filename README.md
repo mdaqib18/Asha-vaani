@@ -32,6 +32,14 @@ Voice-first Android companion for ASHA (community health) workers to record stru
 │   │   ├── theme/          # High-contrast Clinical Teal Material 3 theme
 │   │   └── widgets/        # Language toggle & server settings sheet
 │   └── test/
+├── eval/                   # Evaluation dataset, noise mixer, runner, and reports
+│   ├── ground_truth/       # 36 scripted synthetic cases (hi, kn, code-mixed)
+│   ├── results/            # Generated Markdown report, CSV tables, raw JSON
+│   ├── generate_clean_audio.py
+│   ├── mix_noise.py        # 16 kHz active-SNR market/traffic/crowd noise mixer
+│   ├── metrics.py
+│   ├── run_eval.py
+│   └── README.md
 └── README.md
 ```
 
@@ -54,6 +62,18 @@ cd backend
 
 Check health: `GET http://127.0.0.1:8000/v1/health`
 
+## Running Evaluation
+
+```powershell
+# Transcript-only (36 cases)
+backend\.venv\Scripts\python.exe eval\run_eval.py --mode transcript --delay-s 2.5 --output-dir eval\results
+
+# Generate clean audio subset + mix noise + evaluate clean vs. noisy
+backend\.venv\Scripts\python.exe eval\generate_clean_audio.py --subset-only --delay-s 0.5
+backend\.venv\Scripts\python.exe eval\mix_noise.py --input-dir eval\audio\clean --output-dir eval\audio\noisy --conditions market:20 traffic:10 crowd:5
+backend\.venv\Scripts\python.exe eval\run_eval.py --mode audio --subset-only --conditions clean,market_20db,traffic_10db,crowd_5db --delay-s 2.5 --merge-existing --output-dir eval\results
+```
+
 ## Milestone Status
 
 - [x] **Milestone 1:** Backend skeleton, schema, config, normalizer, validator, risk rules + unit tests
@@ -63,12 +83,12 @@ Check health: `GET http://127.0.0.1:8000/v1/health`
 - [x] **Milestone 5:** Flutter app (login stub, beneficiary list, push-to-talk record, upload, review & confirm)
 - [x] **Milestone 6:** Follow-up loop in app (TTS question playback, auto-open mic, read-back audio)
 - [x] **Milestone 7:** Offline queue and sync
-- [ ] **Milestone 8:** Evaluation run & noise tests
+- [x] **Milestone 8:** Evaluation run & noise tests
 - [ ] **Milestone 9:** Polish, demo video, pitch
 
 ## Open Questions & Decisions (from SPEC.md §18)
 
-- Gnani Prisma STT & Timbre TTS endpoints, auth, formats, and Hindi/Kannada support verified in [docs/gnani_api_notes.md](docs/gnani_api_notes.md); live credit limits & code-mixed STT accuracy pending API key test
-- LLM provider decided: **Gemini** (`LLM_PROVIDER=gemini` for Milestone 3)
+- Gnani Prisma STT & Timbre TTS endpoints, auth, formats, and Hindi/Kannada support verified in [docs/gnani_api_notes.md](docs/gnani_api_notes.md) and Milestone 8 live eval
+- LLM provider decided: **Gemini** (`LLM_PROVIDER=gemini`; `LLM_MODEL` set in `backend/.env`, switched to `gemini-3.5-flash-lite` in Milestone 8 after `gemini-3.5-flash` hit 20 RPD free-tier quota)
 - Final field list and thresholds validated by an ASHA worker/ANM (**TODO(verify)**)
-- Kannada and Hindi support quality on code-mixed speech (evaluate once live key is set)
+- Kannada and Hindi code-mixed quality evaluated in [eval/results/eval_report.md](eval/results/eval_report.md) (`98.1%` transcript field accuracy across 36 cases; `97.2%` on clean/`market_20db`/`traffic_10db` and `94.4%` on `crowd_5db` across the 12-case synthesized audio subset, with Kannada negation drops under 5 dB babble)

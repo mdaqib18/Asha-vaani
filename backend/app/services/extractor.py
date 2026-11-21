@@ -236,6 +236,9 @@ def _normalize_raw(raw: RawExtractionPayload) -> tuple[NewbornVisitRecord, list[
         loc = raw_limb.location
         if raw_limb.present and loc in (None, LimbLocation.unspecified):
             loc = LimbLocation.unspecified
+            for item in ambiguities:
+                if item.field == "limb_abnormality":
+                    item.field = "limb_abnormality.location"
             if not _has_ambiguity(("limb_abnormality", "limb_abnormality.location")):
                 ambiguities.append(
                     Ambiguity(

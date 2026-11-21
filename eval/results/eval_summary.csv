@@ -1,0 +1,6 @@
+condition,cases,errors,field_acc_pct,fields_correct,fields_total,id_acc_pct,number_acc_pct,hallucinations,risk_acc_pct,referral_acc_pct,validation_acc_pct,followup_acc_pct,stt_mean_s,extract_mean_s,validate_risk_mean_s,followup_mean_s,total_mean_s
+transcript,36,0,98.1,318,324,100.0,100.0,4,83.3,100.0,100.0,100.0,0.0,1.923,0.0,0.101,2.024
+clean,12,0,97.2,105,108,100.0,96.2,2,75.0,100.0,91.7,100.0,1.533,3.193,0.0,0.0,4.727
+market_20db,12,0,97.2,105,108,100.0,96.2,2,75.0,100.0,91.7,100.0,1.862,2.078,0.0,0.0,3.94
+traffic_10db,12,0,97.2,105,108,100.0,96.2,2,75.0,100.0,91.7,100.0,1.823,2.002,0.0,0.0,3.825
+crowd_5db,12,0,94.4,102,108,91.7,96.2,2,66.7,91.7,83.3,83.3,2.109,2.167,0.0,0.241,4.517
