@@ -63,10 +63,23 @@ class PrefsService {
     await _prefs.setString(_keyLastWorkerArea, area);
   }
 
+  static const String _keyPaperBaselineMinutes = 'paper_baseline_minutes';
+
   bool get highContrast => _prefs.getBool(_keyHighContrast) ?? false;
 
   Future<void> setHighContrast(bool enabled) async {
     await _prefs.setBool(_keyHighContrast, enabled);
+  }
+
+  /// Optional user-entered baseline (minutes per paper visit) for SPEC_V2 §6.3.
+  double? get paperBaselineMinutes => _prefs.getDouble(_keyPaperBaselineMinutes);
+
+  Future<void> setPaperBaselineMinutes(double? minutes) async {
+    if (minutes == null || minutes <= 0) {
+      await _prefs.remove(_keyPaperBaselineMinutes);
+      return;
+    }
+    await _prefs.setDouble(_keyPaperBaselineMinutes, minutes);
   }
 
   AppLanguage get language => AppLanguage.fromCode(_prefs.getString(_keyLanguage));

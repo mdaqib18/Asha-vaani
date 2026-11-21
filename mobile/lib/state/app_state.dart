@@ -23,12 +23,15 @@ class AppState extends ChangeNotifier {
     AshaProfile? initialProfile,
     bool? initialLocked,
     bool? initialHighContrast,
+    double? initialPaperBaselineMinutes,
     String initialBaseUrl = PrefsService.defaultBaseUrl,
   })  : _prefs = prefs,
         _language = prefs?.language ?? initialLanguage,
         _sessionToken = prefs?.sessionToken,
         _pinDigest = prefs?.pinDigest,
         _highContrast = initialHighContrast ?? prefs?.highContrast ?? false,
+        _paperBaselineMinutes =
+            initialPaperBaselineMinutes ?? prefs?.paperBaselineMinutes,
         _baseUrl = prefs?.baseUrl ?? initialBaseUrl,
         _apiClient = apiClient ??
             DioAshaApiClient(baseUrl: prefs?.baseUrl ?? initialBaseUrl),
@@ -72,6 +75,7 @@ class AppState extends ChangeNotifier {
   bool _isLocked = false;
   bool _isSignedInOffline = false;
   bool _highContrast;
+  double? _paperBaselineMinutes;
   String _baseUrl;
   AshaApiClient _apiClient;
 
@@ -84,6 +88,7 @@ class AppState extends ChangeNotifier {
   bool get hasOfflineCredentials => _pinDigest != null && _lastProfile != null;
   bool get isSignedInOffline => _isSignedInOffline;
   bool get highContrast => _highContrast;
+  double? get paperBaselineMinutes => _paperBaselineMinutes;
   String get baseUrl => _baseUrl;
   AshaApiClient get api => _apiClient;
   AudioCaptureService get recorder => _recorder;
@@ -186,6 +191,14 @@ class AppState extends ChangeNotifier {
     _baseUrl = trimmed;
     _apiClient = customClient ?? DioAshaApiClient(baseUrl: trimmed);
     await _prefs?.setBaseUrl(trimmed);
+    notifyListeners();
+  }
+
+  Future<void> setPaperBaselineMinutes(double? minutes) async {
+    final normalized = (minutes == null || minutes <= 0) ? null : minutes;
+    if (_paperBaselineMinutes == normalized) return;
+    _paperBaselineMinutes = normalized;
+    await _prefs?.setPaperBaselineMinutes(normalized);
     notifyListeners();
   }
 }

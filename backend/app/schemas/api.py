@@ -322,3 +322,52 @@ class BeneficiaryVisitsResponse(BaseModel):
     beneficiary_id: str
     visits: list[VisitSummary] = Field(default_factory=list)
     measurements: list[MeasurementPointOut] = Field(default_factory=list)
+
+
+class StatsSummaryOut(BaseModel):
+    """SPEC_V2 §6.1 summary metrics response."""
+
+    period: str
+    start_date: str
+    end_date: str
+    visits_done: int
+    due_today: int
+    overdue: int
+    active_beneficiaries: int
+    coverage: float
+    high_risk_open: int
+    referrals_suggested: int
+    avg_record_seconds: float | None = None
+    voice_share: float | None = None
+    followup_rate: float | None = None
+    has_demo_data: bool = False
+
+
+class TimeseriesPointOut(BaseModel):
+    """Daily confirmed visit point for bar chart."""
+
+    date: str
+    count: int
+    high_risk_count: int = 0
+
+
+class CategoryCountOut(BaseModel):
+    """Purpose or risk breakdown bar item."""
+
+    key: str
+    label: str
+    count: int
+    share: float
+
+
+class DueListItemOut(BaseModel):
+    """Compact overdue / due-today beneficiary item."""
+
+    beneficiary_id: str
+    local_code: str
+    full_name: str
+    beneficiary_type: str
+    next_due_at: str
+    days_overdue: int
+    risk_level: str
+    last_visit_at: str | None = None

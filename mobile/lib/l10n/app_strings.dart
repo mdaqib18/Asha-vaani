@@ -444,6 +444,113 @@ class AppStrings {
         hi: 'सहेजे गए रिकॉर्ड और कतार खोलें',
         kn: 'ಉಳಿಸಿದ ಭೇಟಿ ಮತ್ತು ಕ್ಯೂ ತೆರೆಯಿರಿ',
       );
+  String get periodToday => _pick(en: 'Today', hi: 'आज', kn: 'ಇಂದು');
+  String get period7Days => _pick(en: '7 days', hi: '7 दिन', kn: '7 ದಿನ');
+  String get period30Days => _pick(en: '30 days', hi: '30 दिन', kn: '30 ದಿನ');
+  String get demoDataBadge => _pick(en: 'Demo data', hi: 'डेमो डेटा', kn: 'ಡೆಮೊ ಡೇಟಾ');
+  String get coverageMetric =>
+      _pick(en: 'Coverage (30d)', hi: 'कवरेज (30 दिन)', kn: 'ವ್ಯಾಪ್ತಿ (30 ದಿನ)');
+  String get referralsMetric =>
+      _pick(en: 'Referrals suggested', hi: 'रेफरल सुझाव', kn: 'ರೆಫರಲ್ ಸಲಹೆ');
+  String get dueOverdueMetric =>
+      _pick(en: 'Due / Overdue', hi: 'देय / बकाया', kn: 'ಬಾಕಿ / ವಿಳಂಬ');
+  String get avgRecordTimeMetric =>
+      _pick(en: 'Avg record time', hi: 'औसत रिकॉर्ड समय', kn: 'ಸರಾಸರಿ ದಾಖಲೆ ಸಮಯ');
+  String get voiceShareMetric =>
+      _pick(en: 'Voice share', hi: 'वॉइस हिस्सेदारी', kn: 'ಧ್ವನಿ ಪಾಲು');
+  String get followupRateMetric =>
+      _pick(en: 'Follow-up rate', hi: 'फॉलो-अप दर', kn: 'ಅನುಸರಣಾ ದರ');
+  String get estTimeSavedMetric =>
+      _pick(en: 'Est. time saved', hi: 'अनुमानित समय बचत', kn: 'ಅಂದಾಜು ಉಳಿತಾಯದ ಸಮಯ');
+  String get insightsTelemetryTitle =>
+      _pick(en: 'Recording telemetry', hi: 'रिकॉर्डिंग विवरण', kn: 'ದಾಖಲಾತಿ ವಿವರ');
+  String get visitsPerDayTitle =>
+      _pick(en: 'Visits per day', hi: 'प्रतिदिन भेंट', kn: 'ದೈನಂದಿನ ಭೇಟಿಗಳು');
+  String get visitsPerDayEmpty => _pick(
+        en: 'No confirmed visits in this period.',
+        hi: 'इस अवधि में कोई पुष्ट भेंट नहीं है।',
+        kn: 'ಈ ಅವಧಿಯಲ್ಲಿ ದೃಢೀಕರಿಸಿದ ಭೇಟಿಗಳಿಲ್ಲ.',
+      );
+  String get visitsByPurposeTitle =>
+      _pick(en: 'Visits by purpose', hi: 'उद्देश्य के अनुसार भेंट', kn: 'ಉದ್ದೇಶದ ಪ್ರಕಾರ ಭೇಟಿಗಳು');
+  String get visitsByPurposeEmpty => _pick(
+        en: 'Purpose breakdown appears after visits are confirmed.',
+        hi: 'भेंट पुष्टि के बाद उद्देश्य विवरण यहां दिखेगा।',
+        kn: 'ಭೇಟಿ ದೃಢೀಕರಿಸಿದ ನಂತರ ಉದ್ದೇಶ ವಿವರ ಕಾಣಿಸುತ್ತದೆ.',
+      );
+  String get riskBreakdownTitle =>
+      _pick(en: 'Risk flags by type', hi: 'जोखिम संकेतों का विवरण', kn: 'ಅಪಾಯ ಸೂಚನೆಗಳ ವಿವರ');
+  String get riskBreakdownEmpty => _pick(
+        en: 'No risk flags recorded in this period.',
+        hi: 'इस अवधि में कोई जोखिम संकेत दर्ज नहीं हुआ।',
+        kn: 'ಈ ಅವಧಿಯಲ್ಲಿ ಯಾವುದೇ ಅಪಾಯ ಸೂಚನೆ ದಾಖಲಾಗಿಲ್ಲ.',
+      );
+  String get dueListCompactTitle =>
+      _pick(en: 'Due list', hi: 'बकाया सूची', kn: 'ಬಾಕಿ ಪಟ್ಟಿ');
+  String get dueListEmpty => _pick(
+        en: 'No beneficiaries due or overdue today.',
+        hi: 'आज कोई लाभार्थी देय या बकाया नहीं है।',
+        kn: 'ಇಂದು ಬಾಕಿ ಇರುವ ಫಲಾನುಭವಿಗಳಿಲ್ಲ.',
+      );
+  String get loadDemoDataAction =>
+      _pick(en: 'Load demo data', hi: 'डेमो डेटा लोड करें', kn: 'ಡೆಮೊ ಡೇಟಾ ಲೋಡ್ ಮಾಡಿ');
+  String get clearDemoDataAction =>
+      _pick(en: 'Clear demo data', hi: 'डेमो डेटा हटाएं', kn: 'ಡೆಮೊ ಡೇಟಾ ತೆರವುಗೊಳಿಸಿ');
+  String get demoDataNotice => _pick(
+        en: 'Includes labeled demo data stored locally on this device.',
+        hi: 'इसमें इस फ़ोन पर सहेजा गया लेबल वाला डेमो डेटा शामिल है।',
+        kn: 'ಈ ಸಾಧನದಲ್ಲಿ ಉಳಿಸಿದ ಗುರುತಿಸಲಾದ ಡೆಮೊ ಡೇಟಾ ಒಳಗೊಂಡಿದೆ.',
+      );
+  String visitsPerDaySummary(int totalVisits, int flaggedVisits, int days) => _pick(
+        en: '$totalVisits confirmed ($flaggedVisits flagged) across $days d',
+        hi: '$days दिन में $totalVisits पुष्ट ($flaggedVisits चिह्नित)',
+        kn: '$days ದಿನಗಳಲ್ಲಿ $totalVisits ದೃಢೀಕೃತ ($flaggedVisits ಗುರುತಿಸಿದ)',
+      );
+  String visitsByPurposeSummary(int topCount, String topLabel) => _pick(
+        en: 'Top purpose: $topLabel ($topCount)',
+        hi: 'मुख्य उद्देश्य: $topLabel ($topCount)',
+        kn: 'ಪ್ರಮುಖ ಉದ್ದೇಶ: $topLabel ($topCount)',
+      );
+  String riskBreakdownSummary(int totalFlags, String topLabel) => _pick(
+        en: '$totalFlags flags logged, led by $topLabel',
+        hi: '$totalFlags संकेत दर्ज, सबसे अधिक $topLabel',
+        kn: '$totalFlags ಸೂಚನೆಗಳು ದಾಖಲಾಗಿವೆ, ಪ್ರಮುಖ: $topLabel',
+      );
+  String dueListSummary(int overdueCount, int dueTodayCount) => _pick(
+        en: '$overdueCount overdue, $dueTodayCount due today',
+        hi: '$overdueCount बकाया, $dueTodayCount आज देय',
+        kn: '$overdueCount ವಿಳಂಬ, $dueTodayCount ಇಂದು ಬಾಕಿ',
+      );
+  String avgSecondsFormat(double seconds) =>
+      _pick(en: '${seconds.toStringAsFixed(0)}s', hi: '${seconds.toStringAsFixed(0)} सेकंड', kn: '${seconds.toStringAsFixed(0)} ಸೆ');
+  String minutesSavedValue(double perVisitMinutes, double totalMinutes) {
+    final p = perVisitMinutes.toStringAsFixed(1);
+    final t = totalMinutes.toStringAsFixed(0);
+    return _pick(
+      en: '$p min/visit ($t min total)',
+      hi: '$p मिनट/भेंट (कुल $t मिनट)',
+      kn: '$p ನಿಮಿಷ/ಭೇಟಿ (ಒಟ್ಟು $t ನಿಮಿಷ)',
+    );
+  }
+  String get paperBaselineLabel => _pick(
+        en: 'Paper baseline (min/visit)',
+        hi: 'कागज़ी रिकॉर्ड समय (मिनट/भेंट)',
+        kn: 'ಕಾಗದ ದಾಖಲೆ ಸಮಯ (ನಿಮಿಷ/ಭೇಟಿ)',
+      );
+  String get paperBaselineUnset =>
+      _pick(en: 'Not set', hi: 'सेट नहीं है', kn: 'ಸೆಟ್ ಮಾಡಿಲ್ಲ');
+  String get paperBaselineSubtitle => _pick(
+        en: 'Optional minutes per paper record to estimate voice time saved',
+        hi: 'वॉइस रिकॉर्डिंग से समय बचत मापने के लिए वैकल्पिक मान',
+        kn: 'ಧ್ವನಿ ದಾಖಲಾತಿಯ ಸಮಯ ಉಳಿತಾಯ ಲೆಕ್ಕಾಚಾರಕ್ಕೆ ಐಚ್ಛಿಕ ಮೌಲ್ಯ',
+      );
+  String get paperBaselineHint => _pick(
+        en: 'Minutes per paper record (e.g. 5)',
+        hi: 'प्रति कागज़ी भेंट मिनट (जैसे 5)',
+        kn: 'ಪ್ರತಿ ಕಾಗದ ದಾಖಲೆಗೆ ನಿಮಿಷಗಳು (ಉದಾ. 5)',
+      );
+  String get clearBaselineAction =>
+      _pick(en: 'Clear baseline', hi: 'मान हटाएं', kn: 'ತೆರವುಗೊಳಿಸಿ');
   String get insightsComingNextTitle => _pick(
         en: 'Charts arrive in the next update',
         hi: 'चार्ट अगले चरण में जुड़ेंगे',
@@ -902,6 +1009,30 @@ class AppStrings {
         return _pick(en: 'Jaundice', hi: 'पीलिया', kn: 'ಕಾಮಾಲೆ');
       case 'limb_abnormality':
         return _pick(en: 'Limb issue', hi: 'हाथ-पैर समस्या', kn: 'ಅಂಗ ಸಮಸ್ಯೆ');
+      case 'high_blood_pressure':
+        return _pick(en: 'High BP', hi: 'उच्च रक्तचाप', kn: 'ಅಧಿಕ ರಕ್ತದೊತ್ತಡ');
+      case 'swelling':
+        return _pick(en: 'Swelling', hi: 'सूजन', kn: 'ಊತ');
+      case 'cough':
+        return _pick(en: 'Cough', hi: 'खांसी', kn: 'ಕೆಮ್ಮು');
+      case 'elevated_temperature':
+        return _pick(en: 'Warm temp', hi: 'हल्का बुखार', kn: 'ಹೆಚ್ಚಿದ ತಾಪಮಾನ');
+      case 'jaundice_present':
+        return _pick(en: 'Jaundice', hi: 'पीलिया', kn: 'ಕಾಮಾಲೆ');
+      case 'danger_signs_present':
+        return _pick(en: 'Danger sign', hi: 'खतरे का संकेत', kn: 'ಅಪಾಯದ ಚಿಹ್ನೆ');
+      case 'limb_abnormality_reported':
+        return _pick(en: 'Limb issue', hi: 'हाथ-पैर समस्या', kn: 'ಅಂಗ ಸಮಸ್ಯೆ');
+      case 'severe_anemia':
+        return _pick(en: 'Severe anemia', hi: 'गंभीर एनीमिया', kn: 'ತೀವ್ರ ರಕ್ತಹೀನತೆ');
+      case 'heavy_bleeding':
+        return _pick(en: 'Heavy bleeding', hi: 'अधिक रक्तस्राव', kn: 'ಅಧಿಕ ರಕ್ತಸ್ರಾವ');
+      case 'severe_acute_malnutrition':
+        return _pick(en: 'Low MUAC / SAM', hi: 'गंभीर कुपोषण', kn: 'ತೀವ್ರ ಅಪೌಷ್ಟಿಕತೆ');
+      case 'persistent_fever':
+        return _pick(en: 'Persistent fever', hi: 'लगातार बुखार', kn: 'ನಿರಂತರ ಜ್ವರ');
+      case 'critical_hyperglycemia':
+        return _pick(en: 'High blood sugar', hi: 'अधिक शुगर', kn: 'ಅಧಿಕ ರಕ್ತದ ಸಕ್ಕರೆ');
       default:
         return flag;
     }

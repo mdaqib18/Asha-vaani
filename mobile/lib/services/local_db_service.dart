@@ -159,6 +159,15 @@ abstract class LocalDbService {
     DateTime? now,
     Future<void> Function(String path)? deleteFile,
   });
+
+  Future<void> saveFollowupV2({
+    required String id,
+    required String visitId,
+    required String questionText,
+    String answerText = '',
+  });
+  Future<Set<String>> getFollowupVisitIdsV2(String workerId);
+  Future<int> clearDemoSeedData(String workerId);
 }
 
 class SqfliteLocalDbService implements LocalDbService {
@@ -639,7 +648,7 @@ class SqfliteLocalDbService implements LocalDbService {
         language: visit.language,
         inputMethod: visit.inputMethod,
         startedAt: visit.startedAt,
-        confirmedAt: now,
+        confirmedAt: visit.confirmedAt ?? now,
         updatedAt: now,
         version: visit.version + 1,
       );
@@ -1001,5 +1010,102 @@ class SqfliteLocalDbService implements LocalDbService {
     }
 
     return purged;
+  }
+
+  @override
+  Future<void> saveFollowupV2({
+    required String id,
+    required String visitId,
+    required String questionText,
+    String answerText = '',
+  }) async {
+    final db = await _open();
+    await db.insert(
+      'followups',
+      {
+        'id': id,
+        'visit_id': visitId,
+        'question_text': questionText,
+        'target_fields': '[]',
+        'answer_text': answerText,
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  @override
+  Future<Set<String>> getFollowupVisitIdsV2(String workerId) async {
+    final db = await _open();
+    final rows = await db.rawQuery(
+      '''
+      SELECT DISTINCT f.visit_id AS visit_id
+      FROM followups f
+      INNER JOIN visits v ON v.id = f.visit_id
+      WHERE v.worker_id = ?
+      ''',
+      [workerId],
+    );
+    return rows
+        .map((r) => r['visit_id'] as String?)
+        .whereType<String>()
+        .toSet();
+  }
+
+  @override
+  Future<int> clearDemoSeedData(String workerId) async {
+    final db = await _open();
+    var removed = 0;
+    await db.transaction((txn) async {
+      final visitRows = await txn.query(
+        'visits',
+        columns: ['id'],
+        where:
+            "worker_id = ? AND (id LIKE 'demo_seed_%' OR client_id LIKE 'demo_seed_%')",
+        whereArgs: [workerId],
+      );
+      final demoVisitIds = visitRows.map((r) => r['id'] as String).toList();
+      for (final vid in demoVisitIds) {
+        await txn.delete('followups', where: 'visit_id = ?', whereArgs: [vid]);
+        await txn.delete(
+          'visit_measurements',
+          where: 'visit_id = ?',
+          whereArgs: [vid],
+        );
+        removed += await txn.delete('visits', where: 'id = ?', whereArgs: [vid]);
+      }
+
+      final benRows = await txn.query(
+        'beneficiaries',
+        columns: ['id'],
+        where: "worker_id = ? AND id LIKE 'demo_seed_%'",
+        whereArgs: [workerId],
+      );
+      final demoBenIds = benRows.map((r) => r['id'] as String).toList();
+      for (final bid in demoBenIds) {
+        await txn.delete(
+          'consents',
+          where: 'beneficiary_id = ?',
+          whereArgs: [bid],
+        );
+        await txn.delete(
+          'pregnancies',
+          where: 'beneficiary_id = ?',
+          whereArgs: [bid],
+        );
+        removed += await txn.delete(
+          'beneficiaries',
+          where: 'id = ?',
+          whereArgs: [bid],
+        );
+      }
+
+      await txn.delete(
+        'audit_log',
+        where: "actor_id = ? AND entity_id LIKE 'demo_seed_%'",
+        whereArgs: [workerId],
+      );
+    });
+    return removed;
   }
 }

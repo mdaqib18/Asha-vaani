@@ -27,8 +27,10 @@ from app.schemas.api import (
     BeneficiaryPatchRequest,
     BeneficiarySpeechDraftOut,
     BeneficiaryVisitsResponse,
+    CategoryCountOut,
     ConfirmResponse,
     DetectedPurposeOut,
+    DueListItemOut,
     DuplicateCandidateOut,
     DuplicateCheckRequest,
     LoginRequest,
@@ -37,10 +39,12 @@ from app.schemas.api import (
     ReadbackResponse,
     RecordPatchRequest,
     RecordPatchResponse,
+    StatsSummaryOut,
     SuggestedPurposeResponse,
     SyncItemRequest,
     SyncItemResult,
     SyncResponse,
+    TimeseriesPointOut,
     VisitSummary,
     VisitTurnResponse,
     VisitTypeFieldOut,
@@ -48,7 +52,7 @@ from app.schemas.api import (
     WorkerProfile,
 )
 from app.schemas.newborn_visit import ExtractedField, FieldSource
-from app.services import risk_rules, stt_gnani, tts_gnani, validator
+from app.services import risk_rules, stats_engine, stt_gnani, tts_gnani, validator
 from app.services.beneficiary_extractor import (
     extract_beneficiary_from_transcript,
     mask_phone,
@@ -945,3 +949,117 @@ def auth_login(payload: LoginRequest) -> LoginResponse:
         token=secrets.token_urlsafe(32),
         worker=WorkerProfile(**worker),
     )
+
+
+def _parse_optional_today(today: str | None) -> date | None:
+    if not today or not today.strip():
+        return None
+    try:
+        return date.fromisoformat(today.strip()[:10])
+    except ValueError as exc:
+        raise ApiError("INVALID_DATE", f"Invalid ISO date '{today}'.", 400) from exc
+
+
+@router.get("/stats/summary", response_model=StatsSummaryOut)
+def get_stats_summary(
+    period: str = Query(default="7d"),
+    asha_id: str = Query(default="asha_001"),
+    today: str | None = Query(default=None),
+    repo: V2Repository = Depends(get_v2_repository),
+    store: VisitStore = Depends(get_store),
+) -> StatsSummaryOut:
+    """Return SPEC_V2 §6.1 summary metrics mirrored from local stats logic."""
+    try:
+        data = stats_engine.compute_summary(
+            worker_id=asha_id,
+            period=period,
+            repo=repo,
+            store=store,
+            today=_parse_optional_today(today),
+        )
+    except ValueError as exc:
+        raise ApiError("INVALID_PERIOD", str(exc), 400) from exc
+    return StatsSummaryOut(**data)
+
+
+@router.get("/stats/visits-timeseries", response_model=list[TimeseriesPointOut])
+def get_stats_visits_timeseries(
+    period: str = Query(default="7d"),
+    asha_id: str = Query(default="asha_001"),
+    today: str | None = Query(default=None),
+    repo: V2Repository = Depends(get_v2_repository),
+    store: VisitStore = Depends(get_store),
+) -> list[TimeseriesPointOut]:
+    """Return daily confirmed visit counts over the selected period."""
+    try:
+        points = stats_engine.compute_visits_timeseries(
+            worker_id=asha_id,
+            period=period,
+            repo=repo,
+            store=store,
+            today=_parse_optional_today(today),
+        )
+    except ValueError as exc:
+        raise ApiError("INVALID_PERIOD", str(exc), 400) from exc
+    return [TimeseriesPointOut(**pt) for pt in points]
+
+
+@router.get("/stats/by-purpose", response_model=list[CategoryCountOut])
+def get_stats_by_purpose(
+    period: str = Query(default="7d"),
+    asha_id: str = Query(default="asha_001"),
+    today: str | None = Query(default=None),
+    repo: V2Repository = Depends(get_v2_repository),
+    store: VisitStore = Depends(get_store),
+) -> list[CategoryCountOut]:
+    """Return confirmed visits grouped by visit purpose."""
+    try:
+        items = stats_engine.compute_by_purpose(
+            worker_id=asha_id,
+            period=period,
+            repo=repo,
+            store=store,
+            today=_parse_optional_today(today),
+        )
+    except ValueError as exc:
+        raise ApiError("INVALID_PERIOD", str(exc), 400) from exc
+    return [CategoryCountOut(**item) for item in items]
+
+
+@router.get("/stats/risk-breakdown", response_model=list[CategoryCountOut])
+def get_stats_risk_breakdown(
+    period: str = Query(default="7d"),
+    asha_id: str = Query(default="asha_001"),
+    today: str | None = Query(default=None),
+    repo: V2Repository = Depends(get_v2_repository),
+    store: VisitStore = Depends(get_store),
+) -> list[CategoryCountOut]:
+    """Return distinct risk-flag counts observed during confirmed visits."""
+    try:
+        items = stats_engine.compute_risk_breakdown(
+            worker_id=asha_id,
+            period=period,
+            repo=repo,
+            store=store,
+            today=_parse_optional_today(today),
+        )
+    except ValueError as exc:
+        raise ApiError("INVALID_PERIOD", str(exc), 400) from exc
+    return [CategoryCountOut(**item) for item in items]
+
+
+@router.get("/stats/due-list", response_model=list[DueListItemOut])
+def get_stats_due_list(
+    asha_id: str = Query(default="asha_001"),
+    limit: int = Query(default=25, ge=1, le=100),
+    today: str | None = Query(default=None),
+    repo: V2Repository = Depends(get_v2_repository),
+) -> list[DueListItemOut]:
+    """Return overdue and due-today beneficiaries ordered by urgency."""
+    items = stats_engine.compute_due_list(
+        worker_id=asha_id,
+        repo=repo,
+        today=_parse_optional_today(today),
+        limit=limit,
+    )
+    return [DueListItemOut(**item) for item in items]

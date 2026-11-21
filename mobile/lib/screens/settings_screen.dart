@@ -194,6 +194,20 @@ class SettingsScreen extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.sm),
         _SettingsRow(
+          icon: Icons.timer_outlined,
+          label: strings.paperBaselineLabel,
+          subtitle: appState.paperBaselineMinutes != null
+              ? '${appState.paperBaselineMinutes!.toStringAsFixed(1)} min'
+              : strings.paperBaselineUnset,
+          onTap: () => showModalBottomSheet<void>(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: tokens.surfaceRaised,
+            builder: (_) => _PaperBaselineSheet(appState: appState),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _SettingsRow(
           icon: Icons.privacy_tip_outlined,
           label: strings.privacyAndDataTitle,
           onTap: () => _showPrivacySheet(context),
@@ -288,6 +302,98 @@ class _SettingsRow extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PaperBaselineSheet extends StatefulWidget {
+  const _PaperBaselineSheet({required this.appState});
+
+  final AppState appState;
+
+  @override
+  State<_PaperBaselineSheet> createState() => _PaperBaselineSheetState();
+}
+
+class _PaperBaselineSheetState extends State<_PaperBaselineSheet> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.appState.paperBaselineMinutes;
+    _controller = TextEditingController(
+      text: existing != null ? existing.toStringAsFixed(1) : '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final parsed = double.tryParse(_controller.text.trim());
+    await widget.appState.setPaperBaselineMinutes(
+      parsed != null && parsed > 0 ? parsed : null,
+    );
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _clear() async {
+    await widget.appState.setPaperBaselineMinutes(null);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = widget.appState.strings;
+    final tokens = AppTokens.of(context);
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.xl,
+        AppSpacing.lg,
+        AppSpacing.xl + bottomInset,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            strings.paperBaselineLabel,
+            style: AppTypography.heading(tokens.ink),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            strings.paperBaselineSubtitle,
+            style: AppTypography.labelRegular(tokens.inkMuted),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              hintText: strings.paperBaselineHint,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          PrimaryButton(
+            label: strings.save,
+            icon: Icons.check_rounded,
+            onPressed: _save,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SecondaryButton(
+            label: strings.clearBaselineAction,
+            icon: Icons.clear_rounded,
+            onPressed: _clear,
+          ),
+        ],
       ),
     );
   }

@@ -389,6 +389,7 @@ class FakeLocalDbService implements LocalDbService {
   final Map<String, SyncQueueEntry> syncQueueV2 = {};
   final Map<String, AudioAssetRecord> audioAssetsV2 = {};
   final List<AuditLogEntry> auditLogV2 = [];
+  final Map<String, String> followupsV2 = {};
 
   @override
   Future<void> cacheBeneficiaries(String ashaId, List<Beneficiary> items) async {
@@ -650,7 +651,7 @@ class FakeLocalDbService implements LocalDbService {
       language: visit.language,
       inputMethod: visit.inputMethod,
       startedAt: visit.startedAt,
-      confirmedAt: now,
+      confirmedAt: visit.confirmedAt ?? now,
       updatedAt: now,
       version: visit.version + 1,
     );
@@ -910,6 +911,61 @@ class FakeLocalDbService implements LocalDbService {
     }
     return purged;
   }
+
+  @override
+  Future<void> saveFollowupV2({
+    required String id,
+    required String visitId,
+    required String questionText,
+    String answerText = '',
+  }) async {
+    followupsV2[id] = visitId;
+  }
+
+  @override
+  Future<Set<String>> getFollowupVisitIdsV2(String workerId) async {
+    final result = <String>{};
+    for (final visitId in followupsV2.values) {
+      final visit = visitsV2[visitId];
+      if (visit != null && visit.workerId == workerId) {
+        result.add(visitId);
+      }
+    }
+    return result;
+  }
+
+  @override
+  Future<int> clearDemoSeedData(String workerId) async {
+    final demoVisitIds = visitsV2.values
+        .where(
+          (v) =>
+              v.workerId == workerId &&
+              (v.id.startsWith('demo_seed_') ||
+                  (v.clientId?.startsWith('demo_seed_') ?? false)),
+        )
+        .map((v) => v.id)
+        .toList();
+    final demoBenIds = beneficiariesV2.values
+        .where((b) => b.workerId == workerId && b.id.startsWith('demo_seed_'))
+        .map((b) => b.id)
+        .toList();
+
+    for (final vid in demoVisitIds) {
+      visitsV2.remove(vid);
+      measurementsV2.removeWhere((m) => m.visitId == vid);
+      followupsV2.removeWhere((_, vId) => vId == vid);
+    }
+    for (final bid in demoBenIds) {
+      beneficiariesV2.remove(bid);
+      consentsV2.removeWhere((_, c) => c.beneficiaryId == bid);
+      pregnanciesV2.removeWhere((_, p) => p.beneficiaryId == bid);
+    }
+    auditLogV2.removeWhere(
+      (entry) =>
+          entry.actorId == workerId && entry.entityId.startsWith('demo_seed_'),
+    );
+    return demoVisitIds.length + demoBenIds.length;
+  }
 }
 
 class FakeConnectivityMonitor implements ConnectivityMonitor {
@@ -945,6 +1001,7 @@ AppState makeTestAppState({
   AshaProfile? initialProfile,
   bool? initialLocked,
   bool? initialHighContrast,
+  double? initialPaperBaselineMinutes,
 }) {
   final db = localDb ?? FakeLocalDbService();
   final conn = connectivity ?? FakeConnectivityMonitor();
@@ -968,5 +1025,6 @@ AppState makeTestAppState({
     initialProfile: initialProfile,
     initialLocked: initialLocked,
     initialHighContrast: initialHighContrast,
+    initialPaperBaselineMinutes: initialPaperBaselineMinutes,
   );
 }
