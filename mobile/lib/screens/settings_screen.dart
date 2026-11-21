@@ -4,6 +4,7 @@ import '../state/app_state.dart';
 import '../ui/ui.dart';
 import '../widgets/language_toggle.dart';
 import '../widgets/server_settings_sheet.dart';
+import 'privacy_and_data_screen.dart';
 import 'saved_visits_screen.dart';
 import 'supervisor_flagged_screen.dart';
 
@@ -17,44 +18,50 @@ class SettingsScreen extends StatelessWidget {
   final AppState appState;
   final ValueNotifier<int> refreshSignal;
 
-  void _showPrivacySheet(BuildContext context) {
+  void _openPrivacyScreen(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PrivacyAndDataScreen(appState: appState),
+      ),
+    );
+  }
+
+  void _showAutoLockSheet(BuildContext context) {
     final tokens = AppTokens.of(context);
     final strings = appState.strings;
+    const options = [30, 60, 300];
     showModalBottomSheet<void>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
       backgroundColor: tokens.surfaceRaised,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
       builder: (sheetContext) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            AppSpacing.lg,
-            AppSpacing.lg,
-            AppSpacing.xl,
-          ),
+        return Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                strings.privacyAndDataTitle,
-                style: AppTypography.title(tokens.ink),
+                strings.autoLockLabel,
+                style: AppTypography.heading(tokens.ink),
               ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                strings.privacySummaryBody,
-                style: AppTypography.body(tokens.ink),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              PrimaryButton(
-                label: strings.ok,
-                icon: Icons.check_rounded,
-                onPressed: () => Navigator.of(sheetContext).pop(),
-              ),
+              const SizedBox(height: AppSpacing.sm),
+              for (final secs in options)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    strings.autoLockOptionSeconds(secs),
+                    style: AppTypography.bodySemiBold(tokens.ink),
+                  ),
+                  trailing: appState.autoLockSeconds == secs
+                      ? Icon(Icons.check_rounded, color: tokens.primary)
+                      : null,
+                  onTap: () async {
+                    await appState.setAutoLockSeconds(secs);
+                    if (sheetContext.mounted) {
+                      Navigator.of(sheetContext).pop();
+                    }
+                  },
+                ),
             ],
           ),
         );
@@ -85,7 +92,12 @@ class SettingsScreen extends StatelessWidget {
     final profile = appState.selectedProfile;
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      padding: const EdgeInsets.fromLTRB(
+        0,
+        AppSpacing.lg,
+        0,
+        AppSpacing.xxl,
+      ),
       children: [
         if (profile != null) ...[
           Container(
@@ -112,10 +124,12 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 SecurityChip(
-                  label: appState.hasOfflineCredentials
-                      ? strings.pinLockOfflineChip
-                      : strings.pinLockChip,
-                  onTap: () => _showPrivacySheet(context),
+                  label: appState.isLocalDbEncrypted
+                      ? strings.encryptedOnDeviceChip
+                      : (appState.hasOfflineCredentials
+                          ? strings.pinLockOfflineChip
+                          : strings.pinLockChip),
+                  onTap: () => _openPrivacyScreen(context),
                 ),
               ],
             ),
@@ -154,6 +168,63 @@ class SettingsScreen extends StatelessWidget {
               style: AppTypography.labelRegular(tokens.inkMuted),
             ),
           ),
+        ),
+        if (appState.biometricAvailable) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            decoration: BoxDecoration(
+              color: tokens.surfaceRaised,
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(
+                color: tokens.outline,
+                width: AppSizes.borderWidth,
+              ),
+            ),
+            child: SwitchListTile(
+              value: appState.biometricEnabled,
+              onChanged: appState.setBiometricEnabled,
+              activeThumbColor: tokens.primary,
+              title: Text(
+                strings.biometricUnlockLabel,
+                style: AppTypography.bodySemiBold(tokens.ink),
+              ),
+            ),
+          ),
+        ],
+        if (appState.allowDevSecurityToggle) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            decoration: BoxDecoration(
+              color: tokens.surfaceRaised,
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(
+                color: tokens.outline,
+                width: AppSizes.borderWidth,
+              ),
+            ),
+            child: SwitchListTile(
+              key: const ValueKey('dev_screenshot_protection_toggle'),
+              value: !appState.screenshotProtectionEnabled,
+              onChanged: (disable) =>
+                  appState.setScreenshotProtectionEnabled(!disable),
+              activeThumbColor: tokens.accent,
+              title: Text(
+                strings.screenshotProtectionDevLabel,
+                style: AppTypography.bodySemiBold(tokens.ink),
+              ),
+              subtitle: Text(
+                strings.screenshotProtectionDevSubtitle,
+                style: AppTypography.labelRegular(tokens.inkMuted),
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.sm),
+        _SettingsRow(
+          icon: Icons.lock_clock_outlined,
+          label: strings.autoLockLabel,
+          subtitle: strings.autoLockOptionSeconds(appState.autoLockSeconds),
+          onTap: () => _showAutoLockSheet(context),
         ),
         const SizedBox(height: AppSpacing.md),
         _SettingsRow(
@@ -210,7 +281,7 @@ class SettingsScreen extends StatelessWidget {
         _SettingsRow(
           icon: Icons.privacy_tip_outlined,
           label: strings.privacyAndDataTitle,
-          onTap: () => _showPrivacySheet(context),
+          onTap: () => _openPrivacyScreen(context),
         ),
         const SizedBox(height: AppSpacing.sm),
         _SettingsRow(

@@ -39,6 +39,7 @@ void main() {
           beneficiary: const Beneficiary(
             id: '1042',
             label: 'Baby of Sunita (synthetic)',
+            consentRecorded: true,
           ),
         ),
       ),

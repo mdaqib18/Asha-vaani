@@ -6,6 +6,7 @@ import '../state/app_state.dart';
 import '../ui/ui.dart';
 import '../widgets/language_toggle.dart';
 import '../widgets/server_settings_sheet.dart';
+import 'privacy_and_data_screen.dart';
 import 'supervisor_flagged_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -169,10 +170,39 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                           const SizedBox(height: AppSpacing.md),
-                          SecurityChip(
-                            label: widget.appState.hasOfflineCredentials
-                                ? strings.pinLockOfflineChip
-                                : strings.pinLockChip,
+                          Wrap(
+                            spacing: AppSpacing.sm,
+                            runSpacing: AppSpacing.xs,
+                            children: [
+                              SecurityChip(
+                                label: widget.appState.hasOfflineCredentials
+                                    ? strings.pinLockOfflineChip
+                                    : strings.pinLockChip,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => PrivacyAndDataScreen(
+                                        appState: widget.appState,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              if (widget.appState.isLocalDbEncrypted)
+                                SecurityChip(
+                                  label: strings.encryptedOnDeviceChip,
+                                  icon: Icons.enhanced_encryption_outlined,
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => PrivacyAndDataScreen(
+                                          appState: widget.appState,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                            ],
                           ),
                           const SizedBox(height: AppSpacing.xl),
                           if (lockedProfile != null) ...[
@@ -288,6 +318,30 @@ class _LoginScreenState extends State<LoginScreen> {
                             loading: _submitting,
                             onPressed: _submit,
                           ),
+                          if (lockedProfile != null &&
+                              widget.appState.biometricEnabled &&
+                              widget.appState.biometricAvailable) ...[
+                            const SizedBox(height: AppSpacing.sm),
+                            SecondaryButton(
+                              label: strings.unlockWithBiometricAction,
+                              icon: Icons.fingerprint_rounded,
+                              onPressed: _submitting
+                                  ? null
+                                  : () async {
+                                      final ok = await widget.appState
+                                          .unlockWithBiometric(
+                                        reason: strings.biometricReason,
+                                      );
+                                      if (!ok && mounted) {
+                                        setState(() {
+                                          _errorText = strings.friendlyError(
+                                            'INVALID_CREDENTIALS',
+                                          );
+                                        });
+                                      }
+                                    },
+                            ),
+                          ],
                           const SizedBox(height: AppSpacing.sm),
                           Text(
                             strings.demoPinHint,

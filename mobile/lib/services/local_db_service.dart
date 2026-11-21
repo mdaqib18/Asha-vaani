@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import '../models/beneficiary.dart';
 import '../models/newborn_visit.dart';
@@ -168,17 +168,42 @@ abstract class LocalDbService {
   });
   Future<Set<String>> getFollowupVisitIdsV2(String workerId);
   Future<int> clearDemoSeedData(String workerId);
+
+  bool get isEncrypted;
+  Future<void> closeDb();
 }
 
 class SqfliteLocalDbService implements LocalDbService {
+  SqfliteLocalDbService({Future<String> Function()? passphraseProvider})
+      : _passphraseProvider = passphraseProvider;
+
+  final Future<String> Function()? _passphraseProvider;
   Database? _db;
+
+  @override
+  bool get isEncrypted => _passphraseProvider != null;
+
+  @override
+  Future<void> closeDb() async {
+    final existing = _db;
+    _db = null;
+    if (existing != null && existing.isOpen) {
+      await existing.close();
+    }
+  }
 
   Future<Database> _open() async {
     if (_db != null && _db!.isOpen) return _db!;
     final dbDir = await getDatabasesPath();
-    final dbPath = p.join(dbDir, 'ashavaani_local.db');
+    final passphrase =
+        _passphraseProvider != null ? await _passphraseProvider() : null;
+    final dbPath = p.join(
+      dbDir,
+      passphrase != null ? 'ashavaani_v2_enc.db' : 'ashavaani_local.db',
+    );
     _db = await openDatabase(
       dbPath,
+      password: passphrase,
       version: kLocalDbVersion,
       onCreate: (db, version) async {
         await LocalDbSchema.createV2(db);

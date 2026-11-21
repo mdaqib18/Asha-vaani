@@ -14,6 +14,9 @@ class PrefsService {
   static const String _keyLastWorkerName = 'last_worker_name';
   static const String _keyLastWorkerArea = 'last_worker_area';
   static const String _keyHighContrast = 'high_contrast_mode';
+  static const String _keyAutoLockSeconds = 'auto_lock_seconds';
+  static const String _keyBiometricEnabled = 'biometric_enabled';
+  static const String _keyScreenshotProtection = 'screenshot_protection_enabled';
 
   static const String defaultBaseUrl = 'http://10.0.2.2:8000';
 
@@ -96,5 +99,24 @@ class PrefsService {
 
   Future<void> setBaseUrl(String url) async {
     await _prefs.setString(_keyBaseUrl, url.trim());
+  }
+
+  int get autoLockSeconds => _prefs.getInt(_keyAutoLockSeconds) ?? 60;
+
+  Future<void> setAutoLockSeconds(int seconds) async {
+    await _prefs.setInt(_keyAutoLockSeconds, seconds < 10 ? 10 : seconds);
+  }
+
+  bool get biometricEnabled => _prefs.getBool(_keyBiometricEnabled) ?? true;
+
+  Future<void> setBiometricEnabled(bool enabled) async {
+    await _prefs.setBool(_keyBiometricEnabled, enabled);
+  }
+
+  bool get screenshotProtectionEnabled =>
+      _prefs.getBool(_keyScreenshotProtection) ?? true;
+
+  Future<void> setScreenshotProtectionEnabled(bool enabled) async {
+    await _prefs.setBool(_keyScreenshotProtection, enabled);
   }
 }

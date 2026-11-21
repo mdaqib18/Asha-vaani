@@ -70,9 +70,11 @@ class SyncService extends ChangeNotifier {
   bool _isSyncing = false;
   int _pendingCount = 0;
   int _counter = 0;
+  DateTime? _lastSyncedAt;
 
   bool get isSyncing => _isSyncing;
   int get pendingCount => _pendingCount;
+  DateTime? get lastSyncedAt => _lastSyncedAt;
 
   static Future<String> _defaultPersistAudioFile(
     String tempPath,
@@ -243,6 +245,14 @@ class SyncService extends ChangeNotifier {
               permanent: permanent,
             );
           }
+        }
+        if (synced > 0) {
+          _lastSyncedAt = DateTime.now().toUtc();
+          try {
+            await _localDb.purgeExpiredAudioAssets(
+              deleteFile: _deleteAudioFile,
+            );
+          } catch (_) {}
         }
       }
     } on ApiException {

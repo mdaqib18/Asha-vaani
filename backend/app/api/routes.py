@@ -3,7 +3,6 @@ from __future__ import annotations
 import base64
 import binascii
 import json
-import secrets
 import uuid
 from datetime import date, timedelta
 
@@ -12,6 +11,7 @@ from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
 
 from app.core.config_loader import VisitTypeConfig, list_visit_configs, load_visit_config
 from app.core.errors import ApiError
+from app.core.security import issue_session_token
 from app.core.settings import Settings, get_settings
 from app.data.beneficiaries import (
     get_assigned_ids,
@@ -940,13 +940,22 @@ async def sync_offline_queue(
 
 
 @router.post("/auth/login", response_model=LoginResponse)
-def auth_login(payload: LoginRequest) -> LoginResponse:
+def auth_login(
+    payload: LoginRequest,
+    settings: Settings = Depends(get_settings),
+) -> LoginResponse:
     """Authenticate an ASHA worker via synthetic worker code and PIN (SPEC_V2 §3.1, §9)."""
     worker = verify_worker_credentials(payload.worker_code, payload.pin)
     if worker is None:
         raise ApiError("INVALID_CREDENTIALS", "Invalid worker code or PIN.", 401)
+    token, expires_at = issue_session_token(
+        worker["id"],
+        secret=settings.SESSION_SECRET,
+        ttl_seconds=settings.SESSION_TTL_SECONDS,
+    )
     return LoginResponse(
-        token=secrets.token_urlsafe(32),
+        token=token,
+        expires_at=expires_at,
         worker=WorkerProfile(**worker),
     )
 

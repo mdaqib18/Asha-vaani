@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 
 import '../models/beneficiary.dart';
 import '../models/newborn_visit.dart';
+import '../models/v2_models.dart';
 import '../services/api_client.dart';
 import '../services/audio_recorder_service.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
+import '../theme/tokens.dart';
 import '../widgets/language_toggle.dart';
 import 'review_confirm_screen.dart';
 
@@ -41,6 +43,9 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
   bool _savedOffline = false;
   bool _permissionGranted = false;
   bool _permanentlyDenied = false;
+  late bool _visitConsentGiven;
+  String _consentMethod = 'verbal';
+  bool _savingConsent = false;
   String? _statusMessage;
   bool _isErrorMessage = false;
 
@@ -58,7 +63,58 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
   @override
   void initState() {
     super.initState();
-    _checkMicPermission();
+    _visitConsentGiven = widget.beneficiary.consentRecorded;
+    _checkConsentAndPermission();
+  }
+
+  Future<void> _checkConsentAndPermission() async {
+    await _checkMicPermission();
+    if (!_visitConsentGiven) {
+      final benKey = widget.beneficiary.uuid ?? widget.beneficiary.id;
+      final consents =
+          await widget.appState.localDb.getConsentsForBeneficiary(benKey);
+      if (!mounted) return;
+      if (consents.isNotEmpty) {
+        setState(() => _visitConsentGiven = true);
+      }
+    }
+  }
+
+  Future<void> _recordVisitConsent() async {
+    if (_savingConsent) return;
+    setState(() => _savingConsent = true);
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+      final benKey = widget.beneficiary.uuid ?? widget.beneficiary.id;
+      final actorId = widget.appState.selectedProfile?.id ?? 'worker';
+      final consentId = UuidV4.generate();
+      await widget.appState.localDb.saveConsent(
+        ConsentRecord(
+          id: consentId,
+          beneficiaryId: benKey,
+          kind: 'visit_recording',
+          givenBy: 'self',
+          method: _consentMethod,
+          givenAt: now,
+        ),
+      );
+      await widget.appState.localDb.recordAuditLog(
+        AuditLogEntry(
+          id: UuidV4.generate(),
+          actorId: actorId,
+          action: 'visit_consent_recorded',
+          entity: 'consent',
+          entityId: consentId,
+          at: now,
+        ),
+      );
+      if (!mounted) return;
+      setState(() => _visitConsentGiven = true);
+    } finally {
+      if (mounted) {
+        setState(() => _savingConsent = false);
+      }
+    }
   }
 
   @override
@@ -80,7 +136,13 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
   }
 
   Future<void> _startHoldRecording() async {
-    if (_uploading || _recording || _playingQuestion || _autoListening) return;
+    if (!_visitConsentGiven ||
+        _uploading ||
+        _recording ||
+        _playingQuestion ||
+        _autoListening) {
+      return;
+    }
 
     if (!_permissionGranted) {
       await _checkMicPermission();
@@ -91,7 +153,13 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
   }
 
   Future<void> _startAutoFollowupRecording() async {
-    if (!mounted || _uploading || _recording || !_permissionGranted) return;
+    if (!mounted ||
+        !_visitConsentGiven ||
+        _uploading ||
+        _recording ||
+        !_permissionGranted) {
+      return;
+    }
     await _beginRecording(autoListening: true);
   }
 
@@ -376,17 +444,11 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
             ],
           ),
           body: SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                    child: IntrinsicHeight(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -446,13 +508,28 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
                     )
                   else
                     _IconCueStrip(appState: widget.appState),
-                  const Spacer(),
+                  const SizedBox(height: AppSpacing.lg),
                   if (_savedOffline)
                     _SavedOfflineCard(
                       title: strings.savedOfflineTitle,
                       subtitle: strings.savedOfflineSubtitle,
                       buttonLabel: strings.done,
                       onDone: () => Navigator.of(context).pop(true),
+                    )
+                  else if (!_visitConsentGiven)
+                    _VisitConsentCard(
+                      title: strings.visitConsentTitle,
+                      checkboxLabel: strings.visitConsentCheckbox,
+                      verbalLabel: strings.consentMethodVerbal,
+                      signedLabel: strings.consentMethodSigned,
+                      method: _consentMethod,
+                      saving: _savingConsent,
+                      onMethodChanged: (m) => setState(() => _consentMethod = m),
+                      onConfirmChanged: (checked) {
+                        if (checked == true) {
+                          _recordVisitConsent();
+                        }
+                      },
                     )
                   else if (!_permissionGranted)
                     _PermissionPromptCard(
@@ -516,7 +593,7 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ],
-                  const Spacer(),
+                  const SizedBox(height: AppSpacing.lg),
                   if (_statusMessage != null)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -560,12 +637,7 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
                       ),
                     ),
                 ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
+              ),
             ),
           ),
         );
@@ -864,6 +936,95 @@ class _SavedOfflineCard extends StatelessWidget {
             child: FilledButton(
               onPressed: onDone,
               child: Text(buttonLabel),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VisitConsentCard extends StatelessWidget {
+  const _VisitConsentCard({
+    required this.title,
+    required this.checkboxLabel,
+    required this.verbalLabel,
+    required this.signedLabel,
+    required this.method,
+    required this.saving,
+    required this.onMethodChanged,
+    required this.onConfirmChanged,
+  });
+
+  final String title;
+  final String checkboxLabel;
+  final String verbalLabel;
+  final String signedLabel;
+  final String method;
+  final bool saving;
+  final ValueChanged<String> onMethodChanged;
+  final ValueChanged<bool?> onConfirmChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = AppTokens.of(context);
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: tokens.surfaceRaised,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(
+          color: tokens.outline,
+          width: AppSizes.borderWidth,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.verified_user_outlined,
+                size: AppSizes.icon,
+                color: tokens.primary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTypography.heading(tokens.ink),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs,
+            children: [
+              ChoiceChip(
+                label: Text(verbalLabel),
+                selected: method == 'verbal',
+                onSelected: saving ? null : (_) => onMethodChanged('verbal'),
+              ),
+              ChoiceChip(
+                label: Text(signedLabel),
+                selected: method == 'signed',
+                onSelected: saving ? null : (_) => onMethodChanged('signed'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          CheckboxListTile(
+            key: const ValueKey('visit_consent_checkbox'),
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            value: false,
+            onChanged: saving ? null : onConfirmChanged,
+            title: Text(
+              checkboxLabel,
+              style: AppTypography.body(tokens.ink),
             ),
           ),
         ],

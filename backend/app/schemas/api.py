@@ -138,6 +138,7 @@ class LoginResponse(BaseModel):
     """Session token and worker profile issued on login."""
 
     token: str
+    expires_at: str | None = None
     worker: WorkerProfile
 
 

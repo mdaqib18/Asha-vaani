@@ -143,6 +143,8 @@ void main() {
       150,
       scrollable: listFinder,
     );
+    await tester.ensureVisible(find.text('Sign out'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
     expect(find.byType(ConfirmSheet), findsOneWidget);

@@ -601,6 +601,208 @@ class AppStrings {
         hi: 'ऑफ़लाइन होने पर ऑडियो फ़ोन में सुरक्षित कतार में रहता है और नेटवर्क आने पर सर्वर को भेजा जाता है। सभी API कुंजियां केवल सर्वर पर रहती हैं। इस संस्करण में केवल कृत्रिम डेमो डेटा है।',
         kn: 'ಆಫ್‌ಲೈನ್ ಇದ್ದಾಗ ಆಡಿಯೋ ಫೋನಿನಲ್ಲಿ ಸಂಗ್ರಹವಾಗಿ, ನೆಟ್‌ವರ್ಕ್ ಬಂದಾಗ ಸರ್ವರ್‌ಗೆ ಕಳುಹಿಸಲಾಗುತ್ತದೆ. API ಕೀಗಳು ಸರ್ವರ್‌ನಲ್ಲಿ ಮಾತ್ರ ಇರುತ್ತವೆ. ಈ ಆವೃತ್ತಿಯಲ್ಲಿ ಕೇವಲ ಕೃತಕ ಡೆಮೊ ಡೇಟಾ ಇದೆ.',
       );
+  String get encryptedOnDeviceChip => _pick(
+        en: 'Encrypted on this device',
+        hi: 'इस फ़ोन पर एन्क्रिप्टेड',
+        kn: 'ಈ ಸಾಧನದಲ್ಲಿ ಎನ್‌ಕ್ರಿಪ್ಟ್ ಆಗಿದೆ',
+      );
+  String get pinProtectedChip => _pick(
+        en: 'PIN lock active',
+        hi: 'पिन लॉक सक्रिय',
+        kn: 'ಪಿನ್ ಲಾಕ್ ಸಕ್ರಿಯ',
+      );
+  String get unlockWithBiometricAction => _pick(
+        en: 'Unlock with biometric',
+        hi: 'बायोमेट्रिक से खोलें',
+        kn: 'ಬಯೋಮೆಟ್ರಿಕ್‌ನಿಂದ ತೆರೆಯಿರಿ',
+      );
+  String get biometricReason => _pick(
+        en: 'Verify your identity to unlock Asha Vaani',
+        hi: 'आशा वाणी खोलने के लिए अपनी पहचान सत्यापित करें',
+        kn: 'ಆಶಾ ವಾಣಿ ತೆರೆಯಲು ನಿಮ್ಮ ಗುರುತನ್ನು ದೃಢೀಕರಿಸಿ',
+      );
+  String get biometricUnlockLabel => _pick(
+        en: 'Biometric unlock',
+        hi: 'बायोमेट्रिक अनलॉक',
+        kn: 'ಬಯೋಮೆಟ್ರಿಕ್ ಅನ್‌ಲಾಕ್',
+      );
+  String get autoLockLabel => _pick(
+        en: 'Auto-lock timeout',
+        hi: 'ऑटो-लॉक समय',
+        kn: 'ಸ್ವಯಂ ಲಾಕ್ ಸಮಯ',
+      );
+  String autoLockOptionSeconds(int seconds) {
+    if (seconds >= 60 && seconds % 60 == 0) {
+      final mins = seconds ~/ 60;
+      return _pick(en: '$mins min', hi: '$mins मिनट', kn: '$mins ನಿಮಿಷ');
+    }
+    return _pick(en: '${seconds}s', hi: '$seconds सेकंड', kn: '$seconds ಸೆ');
+  }
+  String get screenshotProtectionDevLabel => _pick(
+        en: 'Disable screenshot protection (dev demo)',
+        hi: 'स्क्रीनशॉट सुरक्षा बंद करें (डेमो)',
+        kn: 'ಸ್ಕ್ರೀನ್‌ಶಾಟ್ ರಕ್ಷಣೆ ನಿಲ್ಲಿಸಿ (ಡೆಮೊ)',
+      );
+  String get screenshotProtectionDevSubtitle => _pick(
+        en: 'Developer-only toggle for recording demos. Keep enabled to block screenshots and app recents previews.',
+        hi: 'केवल डेमो रिकॉर्डिंग के लिए। मरीज़ की जानकारी सुरक्षित रखने हेतु इसे चालू रखें।',
+        kn: 'ಡೆಮೊ ರೆಕಾರ್ಡಿಂಗ್‌ಗಾಗಿ ಮಾತ್ರ. ರೋಗಿಯ ಮಾಹಿತಿ ರಕ್ಷಿಸಲು ಇದನ್ನು ಸಕ್ರಿಯವಾಗಿರಿಸಿ.',
+      );
+  String encryptedSyncedLabel(String syncText) => _pick(
+        en: 'Encrypted · $syncText',
+        hi: 'सुरक्षित · $syncText',
+        kn: 'ಸುರಕ್ಷಿತ · $syncText',
+      );
+  String get syncedJustNowLabel => _pick(
+        en: 'Synced just now',
+        hi: 'अभी सिंक हुआ',
+        kn: 'ಈಗಲೇ ಸಿಂಕ್ ಆಗಿದೆ',
+      );
+  String syncedMinutesAgo(int minutes) => _pick(
+        en: 'Synced ${minutes}m ago',
+        hi: '$minutes मिनट पहले सिंक हुआ',
+        kn: '$minutes ನಿಮಿಷದ ಹಿಂದೆ ಸಿಂಕ್',
+      );
+  String get visitConsentTitle => _pick(
+        en: 'Recording consent required',
+        hi: 'रिकॉर्डिंग के लिए सहमति ज़रूरी है',
+        kn: 'ದಾಖಲಾತಿಗೆ ಸಮ್ಮತಿ ಅಗತ್ಯವಿದೆ',
+      );
+  String get visitConsentCheckbox => _pick(
+        en: 'Beneficiary / guardian agreed to voice recording for this visit',
+        hi: 'लाभार्थी / अभिभावक ने इस भेंट की आवाज़ रिकॉर्ड करने की सहमति दी है',
+        kn: 'ಈ ಭೇಟಿಯ ಧ್ವನಿ ದಾಖಲಾತಿಗೆ ಫಲಾನುಭವಿ / ಪೋಷಕರು ಸಮ್ಮತಿಸಿದ್ದಾರೆ',
+      );
+  String get consentRecordedBadge => _pick(
+        en: 'Consent recorded',
+        hi: 'सहमति दर्ज है',
+        kn: 'ಸಮ್ಮತಿ ದಾಖಲಾಗಿದೆ',
+      );
+  String get externalIdLabel =>
+      _pick(en: 'External ID', hi: 'बाहरी आईडी', kn: 'ಬಾಹ್ಯ ಐಡಿ');
+  String visitAuditLine(String worker, String confirmedAt, int amendments) {
+    final base = _pick(
+      en: 'Recorded by $worker · Confirmed $confirmedAt',
+      hi: '$worker द्वारा दर्ज · पुष्टि $confirmedAt',
+      kn: '$worker ದಾಖಲಿಸಿದ್ದಾರೆ · ದೃಢೀಕರಣ $confirmedAt',
+    );
+    if (amendments <= 0) return base;
+    final amendTag = _pick(
+      en: 'Amended ($amendments)',
+      hi: 'संशोधित ($amendments)',
+      kn: 'ತಿದ್ದುಪಡಿ ($amendments)',
+    );
+    return '$base · $amendTag';
+  }
+  String get securityStatusTitle => _pick(
+        en: 'Active security checks',
+        hi: 'सक्रिय सुरक्षा जांच',
+        kn: 'ಸಕ್ರಿಯ ಭದ್ರತಾ ಪರಿಶೀಲನೆಗಳು',
+      );
+  String get statusActiveLabel =>
+      _pick(en: 'Active', hi: 'सक्रिय', kn: 'ಸಕ್ರಿಯ');
+  String get statusInactiveLabel =>
+      _pick(en: 'Off', hi: 'बंद', kn: 'ಆಫ್');
+  String get encryptionStatusLabel => _pick(
+        en: 'Local database encryption (SQLCipher + Keystore)',
+        hi: 'स्थानीय डेटाबेस एन्क्रिप्शन (SQLCipher + कीस्टोर)',
+        kn: 'ಸ್ಥಳೀಯ ಡೇಟಾಬೇಸ್ ಎನ್‌ಕ್ರಿಪ್ಶನ್ (SQLCipher)',
+      );
+  String get appLockStatusLabel => _pick(
+        en: 'Worker PIN hash stored in hardware keystore',
+        hi: 'वर्कर पिन हैश सुरक्षित कीस्टोर में',
+        kn: 'ಕಾರ್ಯಕರ್ತರ ಪಿನ್ ಹ್ಯಾಶ್ ಕೀಸ್ಟೋರ್‌ನಲ್ಲಿ',
+      );
+  String get autoLockStatusLabel => _pick(
+        en: 'Auto-lock on inactivity or background',
+        hi: 'निष्क्रियता या बैकग्राउंड में ऑटो-लॉक',
+        kn: 'ನಿಷ್ಕ್ರಿಯತೆ ಅಥವಾ ಹಿನ್ನೆಲೆಯಲ್ಲಿ ಸ್ವಯಂ ಲಾಕ್',
+      );
+  String get biometricStatusLabel => _pick(
+        en: 'Device biometric unlock',
+        hi: 'डिवाइस बायोमेट्रिक अनलॉक',
+        kn: 'ಸಾಧನ ಬಯೋಮೆಟ್ರಿಕ್ ಅನ್‌ಲಾಕ್',
+      );
+  String get screenProtectionStatusLabel => _pick(
+        en: 'Screenshot & recents protection (FLAG_SECURE)',
+        hi: 'स्क्रीनशॉट सुरक्षा (FLAG_SECURE)',
+        kn: 'ಸ್ಕ್ರೀನ್‌ಶಾಟ್ ರಕ್ಷಣೆ (FLAG_SECURE)',
+      );
+  String get transportSecurityLabel => _pick(
+        en: 'Sync transport security',
+        hi: 'सिंक कनेक्शन सुरक्षा',
+        kn: 'ಸಿಂಕ್ ಸಂಪರ್ಕ ಸುರಕ್ಷತೆ',
+      );
+  String get httpsEncryptedLabel => _pick(
+        en: 'HTTPS encrypted',
+        hi: 'HTTPS सुरक्षित',
+        kn: 'HTTPS ಎನ್‌ಕ್ರಿಪ್ಟ್',
+      );
+  String get httpUnencryptedLabel => _pick(
+        en: 'HTTP (local dev only — not encrypted)',
+        hi: 'HTTP (केवल लोकल डेमो — एन्क्रिप्टेड नहीं)',
+        kn: 'HTTP (ಸ್ಥಳೀಯ ಡೆವ್ ಮಾತ್ರ — ಎನ್‌ಕ್ರಿಪ್ಟ್ ಇಲ್ಲ)',
+      );
+  String get runAudioCleanupAction => _pick(
+        en: 'Run audio retention cleanup',
+        hi: 'पुराना ऑडियो अभी साफ़ करें',
+        kn: 'ಹಳೆಯ ಆಡಿಯೋ ಸ್ವಚ್ಛಗೊಳಿಸಿ',
+      );
+  String audioCleanupResult(int count) => _pick(
+        en: '$count expired audio recording(s) deleted.',
+        hi: '$count पुरानी ऑडियो रिकॉर्डिंग हटाई गईं।',
+        kn: '$count ಅವಧಿ ಮೀರಿದ ಆಡಿಯೋ ದಾಖಲೆಗಳನ್ನು ಅಳಿಸಲಾಗಿದೆ.',
+      );
+  String get privacyCollectedTitle => _pick(
+        en: 'What is collected',
+        hi: 'क्या जानकारी ली जाती है',
+        kn: 'ಏನನ್ನು ಸಂಗ್ರಹಿಸಲಾಗುತ್ತದೆ',
+      );
+  String get privacyCollectedBody => _pick(
+        en: 'Beneficiary name, age/DOB, area, recorded measurements, risk flags, and verbal or signed consent records.',
+        hi: 'लाभार्थी का नाम, उम्र/जन्मतिथि, क्षेत्र, स्वास्थ्य माप, जोखिम संकेत और सहमति रिकॉर्ड।',
+        kn: 'ಫಲಾನುಭವಿಯ ಹೆಸರು, ವಯಸ್ಸು/ಜನ್ಮ ದಿನಾಂಕ, ಪ್ರದೇಶ, ಆರೋಗ್ಯ ಅಳತೆಗಳು ಮತ್ತು ಸಮ್ಮತಿ ದಾಖಲೆ.',
+      );
+  String get privacyStorageTitle => _pick(
+        en: 'Where it is stored',
+        hi: 'जानकारी कहाँ सुरक्षित रहती है',
+        kn: 'ಅದು ಎಲ್ಲಿ ಸಂಗ್ರಹವಾಗುತ್ತದೆ',
+      );
+  String get privacyStorageBody => _pick(
+        en: 'Data stays offline-first on this device in an encrypted SQLite database whose key is held in device keystore storage. AI provider keys remain strictly on the backend server.',
+        hi: 'डेटा इस फ़ोन पर एन्क्रिप्टेड SQLite डेटाबेस में रहता है और इसकी कुंजी डिवाइस कीस्टोर में होती है। AI कुंजियाँ केवल सर्वर पर रहती हैं।',
+        kn: 'ಡೇಟಾ ಈ ಫೋನಿನಲ್ಲಿ ಎನ್‌ಕ್ರಿಪ್ಟ್ ಆದ SQLite ಡೇಟಾಬೇಸ್‌ನಲ್ಲಿರುತ್ತದೆ ಮತ್ತು ಕೀ ಕೀಸ್ಟೋರ್‌ನಲ್ಲಿರುತ್ತದೆ. AI ಕೀಗಳು ಸರ್ವರ್‌ನಲ್ಲಿ ಮಾತ್ರ ಇರುತ್ತವೆ.',
+      );
+  String get privacyRetentionTitle => _pick(
+        en: 'How long audio is kept',
+        hi: 'ऑडियो कब तक रखा जाता है',
+        kn: 'ಆಡಿಯೋ ಎಷ್ಟು ಕಾಲ ಉಳಿಯುತ್ತದೆ',
+      );
+  String get privacyRetentionBody => _pick(
+        en: 'Raw audio files are deleted automatically once a visit is confirmed and synced, or after 7 days maximum. Text transcripts stay with the visit record.',
+        hi: 'भेंट पुष्टि और सिंक होने के बाद या अधिकतम 7 दिन में कच्चा ऑडियो हटा दिया जाता है। लिखित विवरण रिकॉर्ड में रहता है।',
+        kn: 'ಭೇಟಿ ದೃಢೀಕರಿಸಿ ಸಿಂಕ್ ಆದ ನಂತರ ಅಥವಾ ಗರಿಷ್ಠ 7 ದಿನಗಳಲ್ಲಿ ಆಡಿಯೋ ಅಳಿಸಲಾಗುತ್ತದೆ. ಲಿಖಿತ ವಿವರ ದಾಖಲೆಯಲ್ಲಿರುತ್ತದೆ.',
+      );
+  String get privacyAccessTitle => _pick(
+        en: 'Who can see it',
+        hi: 'इसे कौन देख सकता है',
+        kn: 'ಇದನ್ನು ಯಾರು ನೋಡಬಹುದು',
+      );
+  String get privacyAccessBody => _pick(
+        en: 'Only the signed-in ASHA worker (unlocked via PIN or device biometric) and authorized ANM/PHC sync endpoints. Sensitive numbers stay masked until tapped, and reveals are audited.',
+        hi: 'केवल लॉग-इन आशा कार्यकर्ता (पिन/बायोमेट्रिक से) और अधिकृत स्वास्थ्य सर्वर। फ़ोन और आईडी छिपे रहते हैं और देखने पर लॉग दर्ज होता है।',
+        kn: 'ಲಾಗಿನ್ ಆದ ಆಶಾ ಕಾರ್ಯಕರ್ತೆ ಮತ್ತು ಅಧಿಕೃತ ಆರೋಗ್ಯ ಸರ್ವರ್ ಮಾತ್ರ. ಫೋನ್/ಐಡಿ ಮರೆಮಾಡಲಾಗಿದ್ದು ತೆರೆದಾಗ ಲಾಗ್ ಆಗುತ್ತದೆ.',
+      );
+  String get privacyDeletionTitle => _pick(
+        en: 'How records are corrected or closed',
+        hi: 'रिकॉर्ड कैसे बदले या बंद किए जाते हैं',
+        kn: 'ದಾಖಲೆಗಳನ್ನು ಹೇಗೆ ತಿದ್ದುಪಡಿ ಅಥವಾ ಮುಚ್ಚಲಾಗುತ್ತದೆ',
+      );
+  String get privacyDeletionBody => _pick(
+        en: 'Confirmed visits cannot be overwritten; corrections create an audited amendment entry. Beneficiaries are soft-closed without losing clinical audit history.',
+        hi: 'पुष्ट भेंट को बदला नहीं जाता; सुधार से ऑडिट संशोधन जुड़ता है। लाभार्थी बंद करने पर भी जांच इतिहास सुरक्षित रहता है।',
+        kn: 'ದೃಢೀಕರಿಸಿದ ಭೇಟಿಯನ್ನು ಅಳಿಸಲಾಗುವುದಿಲ್ಲ; ತಿದ್ದುಪಡಿಗಳಿಗೆ ಆಡಿಟ್ ದಾಖಲೆ ಸೇರುತ್ತದೆ.',
+      );
   String get openUiGalleryLabel => _pick(
         en: 'V2 design gallery',
         hi: 'V2 डिज़ाइन गैलरी',

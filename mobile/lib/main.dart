@@ -7,12 +7,14 @@ import 'screens/login_screen.dart';
 import 'services/prefs_service.dart';
 import 'state/app_state.dart';
 import 'theme/app_theme.dart';
+import 'widgets/auto_lock_wrapper.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final sharedPrefs = await SharedPreferences.getInstance();
   final prefs = PrefsService(sharedPrefs);
   final appState = AppState(prefs: prefs);
+  await appState.initializeSecurity();
   try {
     await appState.syncService.start();
   } catch (_) {}
@@ -37,9 +39,12 @@ class AshaVaaniApp extends StatelessWidget {
           routes: {
             '/gallery': (_) => const ComponentGalleryScreen(),
           },
-          home: showLock
-              ? LoginScreen(appState: appState)
-              : HomeScreen(appState: appState),
+          home: AutoLockWrapper(
+            appState: appState,
+            child: showLock
+                ? LoginScreen(appState: appState)
+                : HomeScreen(appState: appState),
+          ),
         );
       },
     );

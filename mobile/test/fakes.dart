@@ -10,8 +10,11 @@ import 'package:asha_vaani/models/visit_type.dart';
 import 'package:asha_vaani/services/api_client.dart';
 import 'package:asha_vaani/services/audio_player_service.dart';
 import 'package:asha_vaani/services/audio_recorder_service.dart';
+import 'package:asha_vaani/services/biometric_auth_service.dart';
 import 'package:asha_vaani/services/due_engine.dart';
 import 'package:asha_vaani/services/local_db_service.dart';
+import 'package:asha_vaani/services/screen_security_service.dart';
+import 'package:asha_vaani/services/secure_storage_service.dart';
 import 'package:asha_vaani/services/sync_service.dart';
 import 'package:asha_vaani/state/app_state.dart';
 
@@ -375,6 +378,19 @@ class FakeAudioPlaybackService implements AudioPlaybackService {
 }
 
 class FakeLocalDbService implements LocalDbService {
+  FakeLocalDbService({this.encrypted = true});
+
+  bool encrypted;
+  int closeCalls = 0;
+
+  @override
+  bool get isEncrypted => encrypted;
+
+  @override
+  Future<void> closeDb() async {
+    closeCalls += 1;
+  }
+
   final Map<String, List<Beneficiary>> beneficiariesByAsha = {};
   final Map<String, QueuedAudioItem> queue = {};
   final Map<String, LocalDraft> drafts = {};
@@ -874,7 +890,7 @@ class FakeLocalDbService implements LocalDbService {
         (String path) async {
           final file = File(path);
           if (file.existsSync()) {
-            await file.delete();
+            file.deleteSync();
           }
         };
     final purged = <String>[];
@@ -997,11 +1013,15 @@ AppState makeTestAppState({
   FakeAudioPlaybackService? audioPlayer,
   FakeLocalDbService? localDb,
   FakeConnectivityMonitor? connectivity,
+  InMemorySecureStorageService? secureStorage,
+  FakeBiometricAuthService? biometricAuth,
+  FakeScreenSecurityService? screenSecurity,
   AppLanguage initialLanguage = AppLanguage.en,
   AshaProfile? initialProfile,
   bool? initialLocked,
   bool? initialHighContrast,
   double? initialPaperBaselineMinutes,
+  bool? allowDevSecurityToggle,
 }) {
   final db = localDb ?? FakeLocalDbService();
   final conn = connectivity ?? FakeConnectivityMonitor();
@@ -1021,10 +1041,14 @@ AppState makeTestAppState({
     localDb: db,
     connectivity: conn,
     syncService: sync,
+    secureStorage: secureStorage ?? InMemorySecureStorageService(),
+    biometricAuth: biometricAuth ?? FakeBiometricAuthService(),
+    screenSecurity: screenSecurity ?? FakeScreenSecurityService(),
     initialLanguage: initialLanguage,
     initialProfile: initialProfile,
     initialLocked: initialLocked,
     initialHighContrast: initialHighContrast,
     initialPaperBaselineMinutes: initialPaperBaselineMinutes,
+    allowDevSecurityToggle: allowDevSecurityToggle,
   );
 }

@@ -7,6 +7,7 @@ import '../state/app_state.dart';
 import '../ui/ui.dart';
 import '../widgets/language_toggle.dart';
 import 'add_beneficiary_screen.dart';
+import 'privacy_and_data_screen.dart';
 import 'saved_visits_screen.dart';
 import 'supervisor_flagged_screen.dart';
 import 'visit_purpose_picker_screen.dart';
@@ -257,6 +258,19 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       });
 
     final sync = widget.appState.syncService;
+    String syncedAgeText() {
+      final syncedAt = sync.lastSyncedAt;
+      if (syncedAt == null) return strings.syncedLabel;
+      final mins = DateTime.now().toUtc().difference(syncedAt).inMinutes;
+      if (mins <= 0) return strings.syncedJustNowLabel;
+      return strings.syncedMinutesAgo(mins);
+    }
+
+    final baseSyncedLabel = syncedAgeText();
+    final honestSyncedLabel = widget.appState.isHttpsTransport
+        ? strings.encryptedSyncedLabel(baseSyncedLabel)
+        : baseSyncedLabel;
+
     final (SyncChipState syncState, String syncLabel) = sync.isSyncing
         ? (SyncChipState.syncing, strings.syncing)
         : _pendingSyncCount > 0
@@ -266,7 +280,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               )
             : _offline
                 ? (SyncChipState.offline, strings.offlineLabel)
-                : (SyncChipState.synced, strings.syncedLabel);
+                : (SyncChipState.synced, honestSyncedLabel);
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -298,6 +312,20 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 state: syncState,
                 label: syncLabel,
                 onTap: _openSavedVisits,
+              ),
+              SecurityChip(
+                label: widget.appState.isLocalDbEncrypted
+                    ? strings.encryptedOnDeviceChip
+                    : strings.pinProtectedChip,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => PrivacyAndDataScreen(
+                        appState: widget.appState,
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),

@@ -15,6 +15,7 @@ class Beneficiary {
     this.motherId,
     this.phoneMasked,
     this.phoneLocal,
+    this.externalId,
     this.riskLevel = 'none',
     this.nextDueAt,
     this.lastVisitAt,
@@ -34,6 +35,7 @@ class Beneficiary {
   final String? motherId;
   final String? phoneMasked;
   final String? phoneLocal;
+  final String? externalId;
   final String riskLevel;
   final String? nextDueAt;
   final String? lastVisitAt;
@@ -45,12 +47,18 @@ class Beneficiary {
       (phoneLocal != null && phoneLocal!.isNotEmpty) ||
       (phoneMasked != null && phoneMasked!.isNotEmpty);
 
-  static String? maskPhone(String? raw) {
+  bool get hasExternalId => externalId != null && externalId!.isNotEmpty;
+
+  static String? maskPhone(String? raw) => maskSecret(raw, digitsOnly: true);
+
+  static String? maskSecret(String? raw, {bool digitsOnly = false}) {
     if (raw == null || raw.trim().isEmpty) return null;
-    final digits = raw.replaceAll(RegExp(r'\D'), '');
-    if (digits.length < 4) return '••••';
-    final last4 = digits.substring(digits.length - 4);
-    final maskLen = (digits.length - 4).clamp(4, 6);
+    final clean = digitsOnly
+        ? raw.replaceAll(RegExp(r'\D'), '')
+        : raw.trim();
+    if (clean.length < 4) return '••••';
+    final last4 = clean.substring(clean.length - 4);
+    final maskLen = (clean.length - 4).clamp(4, 6);
     return '${'•' * maskLen}$last4';
   }
 
@@ -70,6 +78,7 @@ class Beneficiary {
       area: json['area_name']?.toString() ?? json['area_id']?.toString(),
       motherId: json['mother_id']?.toString(),
       phoneMasked: json['phone_masked']?.toString(),
+      externalId: json['external_id']?.toString(),
       riskLevel: json['risk_level']?.toString() ?? 'none',
       nextDueAt: json['next_due_at']?.toString(),
       lastVisitAt: json['last_visit_at']?.toString(),
@@ -95,6 +104,7 @@ class Beneficiary {
       motherId: record.motherId,
       phoneMasked: maskPhone(record.phoneEnc),
       phoneLocal: record.phoneEnc,
+      externalId: record.externalId,
       riskLevel: record.riskLevel,
       nextDueAt: record.nextDueAt,
       lastVisitAt: record.lastVisitAt,
@@ -115,6 +125,7 @@ class Beneficiary {
     String? motherId,
     String? phoneMasked,
     String? phoneLocal,
+    String? externalId,
     String? riskLevel,
     String? nextDueAt,
     String? lastVisitAt,
@@ -134,6 +145,7 @@ class Beneficiary {
       motherId: motherId ?? this.motherId,
       phoneMasked: phoneMasked ?? this.phoneMasked,
       phoneLocal: phoneLocal ?? this.phoneLocal,
+      externalId: externalId ?? this.externalId,
       riskLevel: riskLevel ?? this.riskLevel,
       nextDueAt: nextDueAt ?? this.nextDueAt,
       lastVisitAt: lastVisitAt ?? this.lastVisitAt,

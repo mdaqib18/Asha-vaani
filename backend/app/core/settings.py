@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./ashavaani.db"
     MAX_FOLLOWUPS: int = 2
     AUDIO_RETENTION_DAYS: int = 7
+    SESSION_SECRET: str = "dev-ephemeral-session-secret-change-in-prod"
+    SESSION_TTL_SECONDS: int = 86400
+    RATE_LIMIT_PER_MINUTE: int = 120
+    REQUIRE_AUTH: bool = False
 
     model_config = SettingsConfigDict(
         env_file=_ENV_FILE,

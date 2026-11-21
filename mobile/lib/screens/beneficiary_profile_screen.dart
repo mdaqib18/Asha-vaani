@@ -29,9 +29,11 @@ class _BeneficiaryProfileScreenState extends State<BeneficiaryProfileScreen> {
   late Beneficiary _beneficiary;
   List<VisitSummary> _visits = const [];
   List<MeasurementPoint> _measurements = const [];
+  Map<String, int> _amendmentCounts = const {};
   bool _loading = true;
   bool _offline = false;
   bool _phoneRevealed = false;
+  bool _externalIdRevealed = false;
   String? _errorText;
 
   @override
@@ -122,19 +124,32 @@ class _BeneficiaryProfileScreenState extends State<BeneficiaryProfileScreen> {
       }
     }
 
+    final counts = <String, int>{};
+    for (final v in visits) {
+      final vid = v.visitId ?? v.sessionId;
+      if (vid.isEmpty) continue;
+      final amendments =
+          await widget.appState.localDb.getVisitAmendments(vid);
+      counts[vid] = amendments.length;
+    }
+
     if (!mounted) return;
     setState(() {
       _beneficiary = profile;
       _visits = visits;
       _measurements = measurements;
+      _amendmentCounts = counts;
       _offline = offline;
       _loading = false;
     });
   }
 
-  Future<void> _toggleRevealPhone() async {
-    final nextState = !_phoneRevealed;
-    setState(() => _phoneRevealed = nextState);
+  Future<void> _toggleSensitiveField({
+    required bool currentlyRevealed,
+    required ValueSetter<bool> setter,
+  }) async {
+    final nextState = !currentlyRevealed;
+    setState(() => setter(nextState));
     if (nextState) {
       final actorId = widget.appState.selectedProfile?.id ?? 'worker';
       await widget.appState.localDb.recordAuditLog(
@@ -198,12 +213,17 @@ class _BeneficiaryProfileScreenState extends State<BeneficiaryProfileScreen> {
 
         final severity = _riskSeverity(_beneficiary.riskLevel);
         final hasPhone = _beneficiary.hasPhone;
-        final revealedValue = _beneficiary.phoneLocal ??
+        final revealedPhone = _beneficiary.phoneLocal ??
             _beneficiary.phoneMasked ??
             strings.notRecorded;
-        final maskedValue = _beneficiary.phoneMasked ??
+        final maskedPhone = _beneficiary.phoneMasked ??
             Beneficiary.maskPhone(_beneficiary.phoneLocal) ??
             strings.notRecorded;
+        final hasExternalId = _beneficiary.hasExternalId;
+        final revealedExternalId = _beneficiary.externalId ?? strings.notRecorded;
+        final maskedExternalId =
+            Beneficiary.maskSecret(_beneficiary.externalId) ??
+                strings.notRecorded;
 
         return AppScaffold(
           title: _beneficiary.label,
@@ -314,7 +334,7 @@ class _BeneficiaryProfileScreenState extends State<BeneficiaryProfileScreen> {
                           const SizedBox(width: AppSpacing.sm),
                           Expanded(
                             child: Text(
-                              '${strings.phoneLabel}: ${_phoneRevealed ? revealedValue : maskedValue}',
+                              '${strings.phoneLabel}: ${_phoneRevealed ? revealedPhone : maskedPhone}',
                               style: AppTypography.tabular(
                                 AppTypography.body(tokens.ink),
                               ),
@@ -324,7 +344,42 @@ class _BeneficiaryProfileScreenState extends State<BeneficiaryProfileScreen> {
                             label: _phoneRevealed
                                 ? strings.hideSensitiveAction
                                 : strings.tapToRevealAction,
-                            onPressed: _toggleRevealPhone,
+                            onPressed: () => _toggleSensitiveField(
+                              currentlyRevealed: _phoneRevealed,
+                              setter: (v) => _phoneRevealed = v,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (hasExternalId) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Divider(color: tokens.outline, height: 1),
+                      const SizedBox(height: AppSpacing.sm),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.badge_outlined,
+                            size: 18,
+                            color: tokens.inkMuted,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              '${strings.externalIdLabel}: ${_externalIdRevealed ? revealedExternalId : maskedExternalId}',
+                              style: AppTypography.tabular(
+                                AppTypography.body(tokens.ink),
+                              ),
+                            ),
+                          ),
+                          TextAction(
+                            label: _externalIdRevealed
+                                ? strings.hideSensitiveAction
+                                : strings.tapToRevealAction,
+                            onPressed: () => _toggleSensitiveField(
+                              currentlyRevealed: _externalIdRevealed,
+                              setter: (v) => _externalIdRevealed = v,
+                            ),
                           ),
                         ],
                       ),
@@ -379,11 +434,21 @@ class _BeneficiaryProfileScreenState extends State<BeneficiaryProfileScreen> {
                             : visit.updatedAt);
                     final hasRisk = visit.referralSuggested ||
                         visit.riskFlags.isNotEmpty;
+                    final vid = visit.visitId ?? visit.sessionId;
+                    final amendCount = _amendmentCounts[vid] ?? 0;
+                    final workerLabel = visit.ashaId ??
+                        widget.appState.selectedProfile?.name ??
+                        'ASHA';
+                    final auditLine = strings.visitAuditLine(
+                      workerLabel,
+                      dateText,
+                      amendCount,
+                    );
                     return Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                       child: VisitTile(
                         purposeLabel: strings.recordVisitTitle,
-                        subtitle: dateText,
+                        subtitle: auditLine,
                         statusLabel: strings.visitSaved,
                         statusSeverity: RiskSeverity.ok,
                         riskLabel: hasRisk

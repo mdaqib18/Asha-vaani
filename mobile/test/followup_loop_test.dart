@@ -79,7 +79,11 @@ void main() {
         theme: AppTheme.lightTheme(),
         home: RecordVisitScreen(
           appState: appState,
-          beneficiary: const Beneficiary(id: '1042', label: 'Baby of Sunita (synthetic)'),
+          beneficiary: const Beneficiary(
+            id: '1042',
+            label: 'Baby of Sunita (synthetic)',
+            consentRecorded: true,
+          ),
         ),
       ),
     );
@@ -155,7 +159,11 @@ void main() {
         theme: AppTheme.lightTheme(),
         home: RecordVisitScreen(
           appState: appState,
-          beneficiary: const Beneficiary(id: '1042', label: 'Baby of Sunita (synthetic)'),
+          beneficiary: const Beneficiary(
+            id: '1042',
+            label: 'Baby of Sunita (synthetic)',
+            consentRecorded: true,
+          ),
         ),
       ),
     );

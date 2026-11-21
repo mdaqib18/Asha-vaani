@@ -2,12 +2,16 @@ import 'package:flutter/foundation.dart';
 
 import '../l10n/app_strings.dart';
 import '../models/beneficiary.dart';
+import '../models/v2_models.dart';
 import '../services/api_client.dart';
 import '../services/audio_player_service.dart';
 import '../services/audio_recorder_service.dart';
+import '../services/biometric_auth_service.dart';
 import '../services/local_db_service.dart';
 import '../services/pin_hasher.dart';
 import '../services/prefs_service.dart';
+import '../services/screen_security_service.dart';
+import '../services/secure_storage_service.dart';
 import '../services/sync_service.dart';
 
 class AppState extends ChangeNotifier {
@@ -19,25 +23,41 @@ class AppState extends ChangeNotifier {
     LocalDbService? localDb,
     ConnectivityMonitor? connectivity,
     SyncService? syncService,
+    SecureStorageService? secureStorage,
+    BiometricAuthService? biometricAuth,
+    ScreenSecurityService? screenSecurity,
     AppLanguage initialLanguage = AppLanguage.hi,
     AshaProfile? initialProfile,
     bool? initialLocked,
     bool? initialHighContrast,
     double? initialPaperBaselineMinutes,
+    bool? allowDevSecurityToggle,
     String initialBaseUrl = PrefsService.defaultBaseUrl,
   })  : _prefs = prefs,
+        _secureStorage = secureStorage ?? FlutterSecureStorageService(),
+        _biometricAuth = biometricAuth ?? LocalBiometricAuthService(),
+        _screenSecurity = screenSecurity ?? PlatformScreenSecurityService(),
         _language = prefs?.language ?? initialLanguage,
         _sessionToken = prefs?.sessionToken,
         _pinDigest = prefs?.pinDigest,
         _highContrast = initialHighContrast ?? prefs?.highContrast ?? false,
         _paperBaselineMinutes =
             initialPaperBaselineMinutes ?? prefs?.paperBaselineMinutes,
+        _autoLockSeconds = prefs?.autoLockSeconds ?? 60,
+        _biometricEnabled = prefs?.biometricEnabled ?? true,
+        _screenshotProtectionEnabled =
+            prefs?.screenshotProtectionEnabled ?? true,
+        _allowDevSecurityToggle = allowDevSecurityToggle ?? kDebugMode,
+        _initialLockedExplicit = initialLocked != null,
         _baseUrl = prefs?.baseUrl ?? initialBaseUrl,
         _apiClient = apiClient ??
             DioAshaApiClient(baseUrl: prefs?.baseUrl ?? initialBaseUrl),
         _recorder = recorder ?? RecordAudioCaptureService(),
-        _audioPlayer = audioPlayer ?? JustAudioPlaybackService(),
-        _localDb = localDb ?? SqfliteLocalDbService() {
+        _audioPlayer = audioPlayer ?? JustAudioPlaybackService() {
+    _localDb = localDb ??
+        SqfliteLocalDbService(
+          passphraseProvider: _secureStorage.getOrCreateDbPassphrase,
+        );
     if (prefs?.lastWorkerId != null && prefs!.lastWorkerId!.isNotEmpty) {
       _lastProfile = AshaProfile(
         id: prefs.lastWorkerId!,
@@ -62,9 +82,14 @@ class AppState extends ChangeNotifier {
   }
 
   final PrefsService? _prefs;
+  final SecureStorageService _secureStorage;
+  final BiometricAuthService _biometricAuth;
+  final ScreenSecurityService _screenSecurity;
   final AudioCaptureService _recorder;
   final AudioPlaybackService _audioPlayer;
-  final LocalDbService _localDb;
+  late final LocalDbService _localDb;
+  final bool _allowDevSecurityToggle;
+  final bool _initialLockedExplicit;
   late final SyncService _syncService;
 
   AppLanguage _language;
@@ -76,6 +101,11 @@ class AppState extends ChangeNotifier {
   bool _isSignedInOffline = false;
   bool _highContrast;
   double? _paperBaselineMinutes;
+  int _autoLockSeconds;
+  bool _biometricEnabled;
+  bool _biometricAvailable = false;
+  bool _screenshotProtectionEnabled;
+  int _lastRetentionPurgedCount = 0;
   String _baseUrl;
   AshaApiClient _apiClient;
 
@@ -89,12 +119,53 @@ class AppState extends ChangeNotifier {
   bool get isSignedInOffline => _isSignedInOffline;
   bool get highContrast => _highContrast;
   double? get paperBaselineMinutes => _paperBaselineMinutes;
+  int get autoLockSeconds => _autoLockSeconds;
+  bool get biometricEnabled => _biometricEnabled;
+  bool get biometricAvailable => _biometricAvailable;
+  bool get screenshotProtectionEnabled => _screenshotProtectionEnabled;
+  bool get isScreenProtected =>
+      _screenSecurity.isSupported && _screenSecurity.isProtected;
+  bool get allowDevSecurityToggle => _allowDevSecurityToggle;
+  bool get isLocalDbEncrypted => _localDb.isEncrypted;
+  bool get isHttpsTransport => _baseUrl.toLowerCase().startsWith('https://');
+  int get lastRetentionPurgedCount => _lastRetentionPurgedCount;
   String get baseUrl => _baseUrl;
   AshaApiClient get api => _apiClient;
   AudioCaptureService get recorder => _recorder;
   AudioPlaybackService get audioPlayer => _audioPlayer;
   LocalDbService get localDb => _localDb;
   SyncService get syncService => _syncService;
+  SecureStorageService get secureStorage => _secureStorage;
+
+  Future<void> initializeSecurity() async {
+    // Migrate legacy secrets out of SharedPreferences into encrypted storage.
+    final legacyPin = _prefs?.pinDigest;
+    if (legacyPin != null && legacyPin.isNotEmpty) {
+      await _secureStorage.writePinDigest(legacyPin);
+      await _prefs?.setPinDigest(null);
+    }
+    final legacyToken = _prefs?.sessionToken;
+    if (legacyToken != null && legacyToken.isNotEmpty) {
+      await _secureStorage.writeSessionToken(legacyToken);
+      await _prefs?.setSessionToken(null);
+    }
+
+    _pinDigest = await _secureStorage.readPinDigest() ?? _pinDigest;
+    _sessionToken = await _secureStorage.readSessionToken() ?? _sessionToken;
+    if (!_initialLockedExplicit && _pinDigest != null) {
+      _isLocked = true;
+    }
+
+    try {
+      _biometricAvailable = await _biometricAuth.canAuthenticate();
+    } catch (_) {
+      _biometricAvailable = false;
+    }
+
+    await _screenSecurity.setProtected(_screenshotProtectionEnabled);
+    await runAudioRetentionSweep();
+    notifyListeners();
+  }
 
   Future<void> setLanguage(AppLanguage lang) async {
     if (_language == lang) return;
@@ -130,8 +201,8 @@ class AppState extends ChangeNotifier {
       _isLocked = false;
       _isSignedInOffline = false;
       await _prefs?.setSelectedAshaId(result.profile.id);
-      await _prefs?.setSessionToken(result.token);
-      await _prefs?.setPinDigest(digest);
+      await _secureStorage.writeSessionToken(result.token);
+      await _secureStorage.writePinDigest(digest);
       await _prefs?.setLastWorker(
         id: result.profile.id,
         name: result.profile.name,
@@ -165,8 +236,39 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> unlockWithBiometric({required String reason}) async {
+    if (!_biometricEnabled || !_biometricAvailable || !hasOfflineCredentials) {
+      return false;
+    }
+    final authenticated = await _biometricAuth.authenticate(reason: reason);
+    if (!authenticated) return false;
+    _selectedProfile = _lastProfile;
+    _sessionToken = await _secureStorage.readSessionToken();
+    _isLocked = false;
+    _isSignedInOffline = true;
+    final actorId = _lastProfile?.id ?? 'worker';
+    try {
+      await _localDb.recordAuditLog(
+        AuditLogEntry(
+          id: UuidV4.generate(),
+          actorId: actorId,
+          action: 'biometric_unlock',
+          entity: 'worker',
+          entityId: actorId,
+          at: DateTime.now().toUtc().toIso8601String(),
+        ),
+      );
+    } catch (_) {}
+    notifyListeners();
+    return true;
+  }
+
   Future<void> lockApp() async {
+    _sessionToken = null;
     _isLocked = true;
+    try {
+      await _localDb.closeDb();
+    } catch (_) {}
     notifyListeners();
   }
 
@@ -182,7 +284,45 @@ class AppState extends ChangeNotifier {
     await _prefs?.setSelectedAshaId(null);
     await _prefs?.setSessionToken(null);
     await _prefs?.setPinDigest(null);
+    await _secureStorage.clearSession();
+    await _secureStorage.writePinDigest(null);
+    try {
+      await _localDb.closeDb();
+    } catch (_) {}
     notifyListeners();
+  }
+
+  Future<void> setAutoLockSeconds(int seconds) async {
+    final normalized = seconds < 10 ? 10 : seconds;
+    if (_autoLockSeconds == normalized) return;
+    _autoLockSeconds = normalized;
+    await _prefs?.setAutoLockSeconds(normalized);
+    notifyListeners();
+  }
+
+  Future<void> setBiometricEnabled(bool enabled) async {
+    if (_biometricEnabled == enabled) return;
+    _biometricEnabled = enabled;
+    await _prefs?.setBiometricEnabled(enabled);
+    notifyListeners();
+  }
+
+  Future<void> setScreenshotProtectionEnabled(bool enabled) async {
+    _screenshotProtectionEnabled = enabled;
+    await _prefs?.setScreenshotProtectionEnabled(enabled);
+    await _screenSecurity.setProtected(enabled);
+    notifyListeners();
+  }
+
+  Future<int> runAudioRetentionSweep({DateTime? now}) async {
+    try {
+      final purged = await _localDb.purgeExpiredAudioAssets(now: now);
+      _lastRetentionPurgedCount = purged.length;
+      notifyListeners();
+      return purged.length;
+    } catch (_) {
+      return 0;
+    }
   }
 
   Future<void> updateBaseUrl(String newUrl, {AshaApiClient? customClient}) async {
