@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     LLM_TIMEOUT_S: float = 30.0
     DATABASE_URL: str = "sqlite:///./ashavaani.db"
     MAX_FOLLOWUPS: int = 2
+    AUDIO_RETENTION_DAYS: int = 7
 
     model_config = SettingsConfigDict(
         env_file=_ENV_FILE,

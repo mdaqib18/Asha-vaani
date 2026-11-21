@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:asha_vaani/l10n/app_strings.dart';
 import 'package:asha_vaani/models/beneficiary.dart';
 import 'package:asha_vaani/models/newborn_visit.dart';
+import 'package:asha_vaani/models/v2_models.dart';
 import 'package:asha_vaani/services/api_client.dart';
 import 'package:asha_vaani/services/audio_player_service.dart';
 import 'package:asha_vaani/services/audio_recorder_service.dart';
+import 'package:asha_vaani/services/due_engine.dart';
 import 'package:asha_vaani/services/local_db_service.dart';
 import 'package:asha_vaani/services/sync_service.dart';
 import 'package:asha_vaani/state/app_state.dart';
@@ -242,6 +245,16 @@ class FakeLocalDbService implements LocalDbService {
   final Map<String, LocalDraft> drafts = {};
   final Map<String, List<VisitSummary>> visitsByAsha = {};
 
+  final Map<String, BeneficiaryRecord> beneficiariesV2 = {};
+  final Map<String, PregnancyRecord> pregnanciesV2 = {};
+  final Map<String, ConsentRecord> consentsV2 = {};
+  final Map<String, VisitRecord> visitsV2 = {};
+  final List<VisitMeasurement> measurementsV2 = [];
+  final List<VisitAmendment> amendmentsV2 = [];
+  final Map<String, SyncQueueEntry> syncQueueV2 = {};
+  final Map<String, AudioAssetRecord> audioAssetsV2 = {};
+  final List<AuditLogEntry> auditLogV2 = [];
+
   @override
   Future<void> cacheBeneficiaries(String ashaId, List<Beneficiary> items) async {
     beneficiariesByAsha[ashaId] = List.of(items);
@@ -330,6 +343,432 @@ class FakeLocalDbService implements LocalDbService {
   @override
   Future<List<VisitSummary>> getCachedVisits(String ashaId) async {
     return List.of(visitsByAsha[ashaId] ?? const []);
+  }
+
+  @override
+  Future<BeneficiaryRecord> upsertBeneficiaryV2(
+    BeneficiaryRecord record, {
+    PregnancyRecord? pregnancy,
+    ConsentRecord? consent,
+    String? actorId,
+  }) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    final existing = beneficiariesV2[record.id];
+    if (existing != null) {
+      final isNewer = record.updatedAt.compareTo(existing.updatedAt) > 0 ||
+          (record.updatedAt == existing.updatedAt &&
+              record.version > existing.version);
+      if (!isNewer) return existing;
+    }
+
+    var saved = record;
+    if (consent != null) {
+      consentsV2[consent.id] = consent;
+      saved = saved.copyWith(consentId: consent.id);
+    }
+    if (saved.nextDueAt == null) {
+      final due = DueEngine.computeNextDueAt(
+        beneficiaryType: saved.beneficiaryType,
+        dob: DueEngine.parseIsoDate(saved.dob),
+        lmpDate: DueEngine.parseIsoDate(pregnancy?.lmpDate),
+      );
+      if (due != null) {
+        saved = saved.copyWith(nextDueAt: DueEngine.formatIsoDate(due));
+      }
+    }
+    beneficiariesV2[saved.id] = saved;
+    if (pregnancy != null) {
+      pregnanciesV2[pregnancy.id] = pregnancy;
+    }
+    auditLogV2.add(
+      AuditLogEntry(
+        id: UuidV4.generate(),
+        actorId: actorId ?? saved.workerId,
+        action: existing == null ? 'beneficiary_created' : 'beneficiary_updated',
+        entity: 'beneficiary',
+        entityId: saved.id,
+        at: now,
+      ),
+    );
+    return saved;
+  }
+
+  @override
+  Future<List<BeneficiaryRecord>> getBeneficiariesV2(
+    String workerId, {
+    bool includeDeleted = false,
+  }) async {
+    return beneficiariesV2.values
+        .where(
+          (b) =>
+              b.workerId == workerId &&
+              (includeDeleted || (b.deletedAt == null && b.status != 'closed')),
+        )
+        .toList()
+      ..sort((a, b) => a.localCode.compareTo(b.localCode));
+  }
+
+  @override
+  Future<BeneficiaryRecord?> getBeneficiaryV2(String beneficiaryId) async {
+    return beneficiariesV2[beneficiaryId];
+  }
+
+  @override
+  Future<void> softDeleteBeneficiaryV2(
+    String beneficiaryId, {
+    required String actorId,
+  }) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    final existing = beneficiariesV2[beneficiaryId];
+    if (existing != null) {
+      beneficiariesV2[beneficiaryId] = existing.copyWith(
+        deletedAt: now,
+        status: 'closed',
+        updatedAt: now,
+        version: existing.version + 1,
+      );
+    }
+    auditLogV2.add(
+      AuditLogEntry(
+        id: UuidV4.generate(),
+        actorId: actorId,
+        action: 'beneficiary_soft_deleted',
+        entity: 'beneficiary',
+        entityId: beneficiaryId,
+        at: now,
+      ),
+    );
+  }
+
+  @override
+  Future<void> saveConsent(ConsentRecord consent) async {
+    consentsV2[consent.id] = consent;
+  }
+
+  @override
+  Future<List<ConsentRecord>> getConsentsForBeneficiary(
+    String beneficiaryId,
+  ) async {
+    return consentsV2.values
+        .where((c) => c.beneficiaryId == beneficiaryId)
+        .toList();
+  }
+
+  @override
+  Future<VisitRecord> confirmVisitV2(
+    VisitRecord visit, {
+    int? intervalDays,
+    DateTime? dob,
+    DateTime? lmpDate,
+    String? actorId,
+  }) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    final existing = visitsV2[visit.id];
+    if (existing != null &&
+        (existing.status == 'confirmed' || existing.status == 'amended')) {
+      throw VisitImmutableException(
+        'Visit ${visit.id} is already ${existing.status}.',
+      );
+    }
+
+    var nextDueStr = visit.nextDueAt;
+    if (visit.beneficiaryId != null) {
+      final ben = beneficiariesV2[visit.beneficiaryId!];
+      if (ben != null) {
+        final nextDue = DueEngine.computeNextDueAt(
+          beneficiaryType: ben.beneficiaryType,
+          dob: dob ?? DueEngine.parseIsoDate(ben.dob),
+          visitedAt: DueEngine.parseIsoDate(visit.visitedAt) ?? DateTime.now(),
+          lmpDate: lmpDate,
+          intervalDays: intervalDays,
+        );
+        nextDueStr = nextDue != null ? DueEngine.formatIsoDate(nextDue) : null;
+        final updateLast = ben.lastVisitAt == null ||
+            visit.visitedAt.compareTo(ben.lastVisitAt!) >= 0;
+        beneficiariesV2[ben.id] = ben.copyWith(
+          lastVisitAt: updateLast ? visit.visitedAt : ben.lastVisitAt,
+          nextDueAt: nextDueStr,
+          riskLevel: DueEngine.deriveRiskLevel(
+            visit.riskFlags,
+            referralSuggested: visit.referralSuggested,
+          ),
+          updatedAt: now,
+          version: ben.version + 1,
+        );
+      }
+    }
+
+    final confirmed = VisitRecord(
+      id: visit.id,
+      clientId: visit.clientId,
+      beneficiaryId: visit.beneficiaryId,
+      workerId: visit.workerId,
+      visitTypeCode: visit.visitTypeCode,
+      schemaVersion: visit.schemaVersion,
+      visitedAt: visit.visitedAt,
+      status: 'confirmed',
+      payload: visit.payload,
+      riskFlags: visit.riskFlags,
+      referralSuggested: visit.referralSuggested,
+      nextDueAt: nextDueStr,
+      transcriptText: visit.transcriptText,
+      language: visit.language,
+      inputMethod: visit.inputMethod,
+      startedAt: visit.startedAt,
+      confirmedAt: now,
+      updatedAt: now,
+      version: visit.version + 1,
+    );
+    visitsV2[visit.id] = confirmed;
+    measurementsV2.removeWhere((m) => m.visitId == visit.id);
+    for (final m in DueEngine.extractNumericMeasurements(visit.payload)) {
+      measurementsV2.add(
+        VisitMeasurement(
+          id: UuidV4.generate(),
+          visitId: visit.id,
+          beneficiaryId: visit.beneficiaryId,
+          key: m.$1,
+          valueNum: m.$2,
+          unit: m.$3,
+          measuredAt: visit.visitedAt,
+        ),
+      );
+    }
+    auditLogV2.add(
+      AuditLogEntry(
+        id: UuidV4.generate(),
+        actorId: actorId ?? visit.workerId,
+        action: 'visit_confirmed',
+        entity: 'visit',
+        entityId: visit.id,
+        at: now,
+      ),
+    );
+    return confirmed;
+  }
+
+  @override
+  Future<(VisitRecord, VisitAmendment)> amendVisitV2({
+    required String visitId,
+    required String changedBy,
+    required Map<String, dynamic> changes,
+    required String reason,
+    List<String>? riskFlags,
+    bool? referralSuggested,
+  }) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    final existing = visitsV2[visitId];
+    if (existing == null) throw StateError('Visit not found: $visitId');
+    if (existing.status != 'confirmed' && existing.status != 'amended') {
+      throw StateError('Only confirmed visits can be amended.');
+    }
+
+    final updatedPayload = Map<String, dynamic>.from(existing.payload);
+    final diff = <String, dynamic>{};
+    for (final entry in changes.entries) {
+      diff[entry.key] = {
+        'before': updatedPayload[entry.key],
+        'after': entry.value,
+      };
+      updatedPayload[entry.key] = entry.value;
+    }
+
+    final amendment = VisitAmendment(
+      id: UuidV4.generate(),
+      visitId: visitId,
+      changedBy: changedBy,
+      changes: diff,
+      reason: reason.trim(),
+      createdAt: now,
+    );
+    amendmentsV2.add(amendment);
+
+    final mergedFlags = riskFlags ?? existing.riskFlags;
+    final mergedReferral = referralSuggested ?? existing.referralSuggested;
+    final amended = VisitRecord(
+      id: existing.id,
+      clientId: existing.clientId,
+      beneficiaryId: existing.beneficiaryId,
+      workerId: existing.workerId,
+      visitTypeCode: existing.visitTypeCode,
+      schemaVersion: existing.schemaVersion,
+      visitedAt: existing.visitedAt,
+      status: 'amended',
+      payload: updatedPayload,
+      riskFlags: mergedFlags,
+      referralSuggested: mergedReferral,
+      nextDueAt: existing.nextDueAt,
+      transcriptText: existing.transcriptText,
+      language: existing.language,
+      inputMethod: existing.inputMethod,
+      startedAt: existing.startedAt,
+      confirmedAt: existing.confirmedAt,
+      updatedAt: now,
+      version: existing.version + 1,
+    );
+    visitsV2[visitId] = amended;
+
+    measurementsV2.removeWhere((m) => m.visitId == visitId);
+    for (final m in DueEngine.extractNumericMeasurements(updatedPayload)) {
+      measurementsV2.add(
+        VisitMeasurement(
+          id: UuidV4.generate(),
+          visitId: visitId,
+          beneficiaryId: existing.beneficiaryId,
+          key: m.$1,
+          valueNum: m.$2,
+          unit: m.$3,
+          measuredAt: existing.visitedAt,
+        ),
+      );
+    }
+
+    if (existing.beneficiaryId != null) {
+      final ben = beneficiariesV2[existing.beneficiaryId!];
+      if (ben != null) {
+        beneficiariesV2[ben.id] = ben.copyWith(
+          riskLevel: DueEngine.deriveRiskLevel(
+            mergedFlags,
+            referralSuggested: mergedReferral,
+          ),
+          updatedAt: now,
+          version: ben.version + 1,
+        );
+      }
+    }
+    auditLogV2.add(
+      AuditLogEntry(
+        id: UuidV4.generate(),
+        actorId: changedBy,
+        action: 'visit_amended',
+        entity: 'visit',
+        entityId: visitId,
+        at: now,
+      ),
+    );
+    return (amended, amendment);
+  }
+
+  @override
+  Future<List<VisitRecord>> getVisitsV2({
+    String? workerId,
+    String? beneficiaryId,
+  }) async {
+    return visitsV2.values
+        .where(
+          (v) =>
+              (workerId == null || v.workerId == workerId) &&
+              (beneficiaryId == null || v.beneficiaryId == beneficiaryId),
+        )
+        .toList();
+  }
+
+  @override
+  Future<List<VisitAmendment>> getVisitAmendments(String visitId) async {
+    return amendmentsV2.where((a) => a.visitId == visitId).toList();
+  }
+
+  @override
+  Future<List<VisitMeasurement>> getVisitMeasurements(
+    String beneficiaryId, {
+    String? key,
+  }) async {
+    return measurementsV2
+        .where(
+          (m) =>
+              m.beneficiaryId == beneficiaryId && (key == null || m.key == key),
+        )
+        .toList();
+  }
+
+  @override
+  Future<List<AuditLogEntry>> getAuditLogs({String? entityId}) async {
+    if (entityId == null) return List.of(auditLogV2);
+    return auditLogV2.where((a) => a.entityId == entityId).toList();
+  }
+
+  @override
+  Future<void> enqueueSyncV2(SyncQueueEntry entry) async {
+    syncQueueV2[entry.id] = entry;
+  }
+
+  @override
+  Future<List<SyncQueueEntry>> getSyncQueueV2() async {
+    return syncQueueV2.values.toList();
+  }
+
+  @override
+  Future<void> markSyncAttemptV2(String id, {String? error}) async {
+    final existing = syncQueueV2[id];
+    if (existing != null) {
+      syncQueueV2[id] = SyncQueueEntry(
+        id: existing.id,
+        entity: existing.entity,
+        entityId: existing.entityId,
+        op: existing.op,
+        attempts: existing.attempts + 1,
+        lastError: error,
+        createdAt: existing.createdAt,
+      );
+    }
+  }
+
+  @override
+  Future<void> removeSyncItemV2(String id) async {
+    syncQueueV2.remove(id);
+  }
+
+  @override
+  Future<void> saveAudioAsset(AudioAssetRecord asset) async {
+    audioAssetsV2[asset.id] = asset;
+  }
+
+  @override
+  Future<List<String>> purgeExpiredAudioAssets({
+    DateTime? now,
+    Future<void> Function(String path)? deleteFile,
+  }) async {
+    final refNow = now ?? DateTime.now().toUtc();
+    final deleter = deleteFile ??
+        (String path) async {
+          final file = File(path);
+          if (file.existsSync()) {
+            await file.delete();
+          }
+        };
+    final purged = <String>[];
+    for (final asset in audioAssetsV2.values.toList()) {
+      if (asset.state == 'deleted') continue;
+      final visit = asset.visitId != null ? visitsV2[asset.visitId!] : null;
+      final confirmed =
+          visit != null && (visit.status == 'confirmed' || visit.status == 'amended');
+      final deleteDt =
+          asset.deleteAfter != null ? DateTime.tryParse(asset.deleteAfter!) : null;
+      final expired = deleteDt != null && !deleteDt.isAfter(refNow);
+      if (!(asset.state == 'uploaded' && confirmed) && !expired) continue;
+      await deleter(asset.path);
+      audioAssetsV2[asset.id] = AudioAssetRecord(
+        id: asset.id,
+        visitId: asset.visitId,
+        path: asset.path,
+        durationMs: asset.durationMs,
+        state: 'deleted',
+        deleteAfter: asset.deleteAfter,
+        createdAt: asset.createdAt,
+      );
+      auditLogV2.add(
+        AuditLogEntry(
+          id: UuidV4.generate(),
+          actorId: 'system_retention',
+          action: 'audio_deleted',
+          entity: 'audio_asset',
+          entityId: asset.id,
+          at: refNow.toIso8601String(),
+        ),
+      );
+      purged.add(asset.id);
+    }
+    return purged;
   }
 }
 
