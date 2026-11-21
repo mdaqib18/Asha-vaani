@@ -51,6 +51,14 @@ void main() {
       expect(s.syncing.trim(), isNotEmpty);
       expect(s.pendingSyncBanner(2).trim(), isNotEmpty);
       expect(s.done.trim(), isNotEmpty);
+      expect(s.supervisorTitle.trim(), isNotEmpty);
+      expect(s.supervisorSubtitle.trim(), isNotEmpty);
+      expect(s.supervisorEmpty.trim(), isNotEmpty);
+      expect(s.openSupervisorView.trim(), isNotEmpty);
+      expect(s.flaggedCountLabel(3).trim(), isNotEmpty);
+      expect(s.workerIdLabel.trim(), isNotEmpty);
+      expect(s.visitDetailsTitle.trim(), isNotEmpty);
+      expect(s.demoConsentNotice.trim(), isNotEmpty);
       expect(s.friendlyError('NETWORK_ERROR').trim(), isNotEmpty);
       expect(s.friendlyError('TIMEOUT').trim(), isNotEmpty);
       expect(s.friendlyError('INVALID_AUDIO').trim(), isNotEmpty);

@@ -41,6 +41,8 @@ abstract class AshaApiClient {
   Future<String> confirmVisit(String sessionId);
   Future<ReadbackResponse> getReadback(String sessionId, String language);
   Future<List<VisitSummary>> getSavedVisits(String ashaId);
+  Future<List<VisitSummary>> getFlaggedVisits();
+  Future<VisitDetail> getVisitDetail(String sessionId);
   Future<List<SyncItemResult>> syncOfflineQueue(List<SyncBatchItem> items);
 }
 
@@ -234,6 +236,33 @@ class DioAshaApiClient implements AshaApiClient {
           .whereType<Map<String, dynamic>>()
           .map(VisitSummary.fromJson)
           .toList();
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  @override
+  Future<List<VisitSummary>> getFlaggedVisits() async {
+    try {
+      final resp = await _dio.get<List<dynamic>>(
+        '/v1/visits',
+        queryParameters: {'flagged_only': true},
+      );
+      final items = resp.data ?? const [];
+      return items
+          .whereType<Map<String, dynamic>>()
+          .map(VisitSummary.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  @override
+  Future<VisitDetail> getVisitDetail(String sessionId) async {
+    try {
+      final resp = await _dio.get<Map<String, dynamic>>('/v1/visits/$sessionId');
+      return VisitDetail.fromJson(resp.data ?? const {});
     } on DioException catch (e) {
       throw _mapError(e);
     }

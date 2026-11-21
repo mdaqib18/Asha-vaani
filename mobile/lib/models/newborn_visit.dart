@@ -338,6 +338,7 @@ class VisitSummary {
   const VisitSummary({
     this.visitId,
     required this.sessionId,
+    this.ashaId,
     this.beneficiaryId,
     this.visitDate,
     this.riskFlags = const [],
@@ -348,6 +349,7 @@ class VisitSummary {
 
   final String? visitId;
   final String sessionId;
+  final String? ashaId;
   final String? beneficiaryId;
   final String? visitDate;
   final List<String> riskFlags;
@@ -359,6 +361,7 @@ class VisitSummary {
     return VisitSummary(
       visitId: json['visit_id'] as String?,
       sessionId: json['session_id'] as String? ?? '',
+      ashaId: json['asha_id'] as String?,
       beneficiaryId: json['beneficiary_id'] as String?,
       visitDate: json['visit_date'] as String?,
       riskFlags: (json['risk_flags'] as List<dynamic>?)
@@ -375,6 +378,7 @@ class VisitSummary {
     return {
       if (visitId != null) 'visit_id': visitId,
       'session_id': sessionId,
+      if (ashaId != null) 'asha_id': ashaId,
       if (beneficiaryId != null) 'beneficiary_id': beneficiaryId,
       if (visitDate != null) 'visit_date': visitDate,
       'risk_flags': riskFlags,
@@ -382,6 +386,43 @@ class VisitSummary {
       'status': status,
       'updated_at': updatedAt,
     };
+  }
+}
+
+class VisitDetail {
+  const VisitDetail({
+    required this.sessionId,
+    this.visitId,
+    this.ashaId,
+    this.language = 'hi',
+    required this.status,
+    required this.record,
+    this.lastTranscript = '',
+    this.updatedAt = '',
+  });
+
+  final String sessionId;
+  final String? visitId;
+  final String? ashaId;
+  final String language;
+  final String status;
+  final NewbornVisitRecord record;
+  final String lastTranscript;
+  final String updatedAt;
+
+  factory VisitDetail.fromJson(Map<String, dynamic> json) {
+    return VisitDetail(
+      sessionId: json['session_id'] as String? ?? '',
+      visitId: json['visit_id'] as String?,
+      ashaId: json['asha_id'] as String?,
+      language: json['language'] as String? ?? 'hi',
+      status: json['status'] as String? ?? 'saved',
+      record: NewbornVisitRecord.fromJson(
+        json['record'] as Map<String, dynamic>? ?? const {},
+      ),
+      lastTranscript: json['last_transcript'] as String? ?? '',
+      updatedAt: json['updated_at'] as String? ?? '',
+    );
   }
 }
 

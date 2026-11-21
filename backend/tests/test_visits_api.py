@@ -325,3 +325,64 @@ def test_sync_batch_and_idempotency(wired_api) -> None:
     results2 = resp2.json()["results"]
     assert results2[0] == results1[0]
     assert (state["stt_calls"], state["llm_calls"]) == calls_before
+
+
+def test_list_visits_flagged_only_filters_across_ashas(wired_api) -> None:
+    client, _ = wired_api
+    store = client.app.dependency_overrides[get_store]()
+
+    from app.db.store import StoredSession
+    from app.schemas.newborn_visit import ExtractedField, NewbornVisitRecord
+
+    store.create_or_update_session(
+        StoredSession(
+            session_id="sess-normal",
+            visit_id="visit-normal",
+            asha_id="asha_001",
+            status="saved",
+            record=NewbornVisitRecord(
+                beneficiary_id=ExtractedField(value="1042"),
+                baby_weight_kg=ExtractedField(value=3.0),
+                risk_flags=[],
+                referral_suggested=False,
+            ),
+        )
+    )
+    store.create_or_update_session(
+        StoredSession(
+            session_id="sess-flagged-1",
+            visit_id="visit-flagged-1",
+            asha_id="asha_001",
+            status="saved",
+            record=NewbornVisitRecord(
+                beneficiary_id=ExtractedField(value="1043"),
+                baby_weight_kg=ExtractedField(value=2.1),
+                risk_flags=["low_birth_weight"],
+                referral_suggested=True,
+            ),
+        )
+    )
+    store.create_or_update_session(
+        StoredSession(
+            session_id="sess-flagged-2",
+            visit_id="visit-flagged-2",
+            asha_id="asha_002",
+            status="saved",
+            record=NewbornVisitRecord(
+                beneficiary_id=ExtractedField(value="2011"),
+                temperature_c=ExtractedField(value=38.0),
+                risk_flags=["fever"],
+                referral_suggested=True,
+            ),
+        )
+    )
+
+    resp = client.get("/v1/visits?flagged_only=true")
+    assert resp.status_code == 200
+    items = resp.json()
+    ids = [item["session_id"] for item in items]
+    assert "sess-normal" not in ids
+    assert set(ids) == {"sess-flagged-1", "sess-flagged-2"}
+    by_id = {item["session_id"]: item for item in items}
+    assert by_id["sess-flagged-1"]["asha_id"] == "asha_001"
+    assert by_id["sess-flagged-2"]["asha_id"] == "asha_002"

@@ -125,6 +125,48 @@ class AppStrings {
         kn: 'ANM / ವೈದ್ಯರ ಸಲಹೆ',
       );
 
+  // Supervisor / ANM Flagged Cases View & Privacy Notice
+  String get supervisorTitle => _pick(
+        en: 'Flagged Cases (ANM)',
+        hi: 'फ्लैग किए गए मामले (ANM)',
+        kn: 'ಗುರುತಿಸಿದ ಪ್ರಕರಣಗಳು (ANM)',
+      );
+  String get supervisorSubtitle => _pick(
+        en: 'High-risk newborn visits awaiting review',
+        hi: 'समीक्षा के लिए उच्च जोखिम वाले नवजात रिकॉर्ड',
+        kn: 'ಪರಿಶೀಲನೆಗೆ ಕಾಯುತ್ತಿರುವ ಹೆಚ್ಚಿನ ಅಪಾಯದ ನವಜಾತ ಭೇಟಿಗಳು',
+      );
+  String get supervisorEmpty => _pick(
+        en: 'No flagged visits right now',
+        hi: 'अभी कोई फ्लैग किया गया रिकॉर्ड नहीं है',
+        kn: 'ಸದ್ಯಕ್ಕೆ ಯಾವುದೇ ಗುರುತಿಸಿದ ಭೇಟಿಗಳಿಲ್ಲ',
+      );
+  String get openSupervisorView => _pick(
+        en: 'ANM / Supervisor View',
+        hi: 'ANM / पर्यवेक्षक दृश्य',
+        kn: 'ANM / ಮೇಲ್ವಿಚಾರಕರ ನೋಟ',
+      );
+  String flaggedCountLabel(int count) => _pick(
+        en: '$count flagged visit(s)',
+        hi: '$count फ्लैग किए गए रिकॉर्ड',
+        kn: '$count ಗುರುತಿಸಿದ ಭೇಟಿಗಳು',
+      );
+  String get workerIdLabel => _pick(
+        en: 'ASHA',
+        hi: 'आशा',
+        kn: 'ಆಶಾ',
+      );
+  String get visitDetailsTitle => _pick(
+        en: 'Visit Details',
+        hi: 'भेंट का विवरण',
+        kn: 'ಭೇಟಿ ವಿವರಗಳು',
+      );
+  String get demoConsentNotice => _pick(
+        en: 'Voice consent required · Synthetic demo data only',
+        hi: 'आवाज़ रिकॉर्ड करने से पहले सहमति आवश्यक · केवल कृत्रिम डेमो डेटा',
+        kn: 'ಧ್ವನಿ ದಾಖಲಿಸಲು ಸಮ್ಮತಿ ಅಗತ್ಯ · ಕೇವಲ ಕೃತಕ ಡೆಮೊ ಡೇಟಾ',
+      );
+
   // Offline & Sync
   String get savedOfflineTitle => _pick(
         en: 'Saved offline',

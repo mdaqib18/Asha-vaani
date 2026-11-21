@@ -6,6 +6,7 @@ import '../widgets/language_toggle.dart';
 import '../widgets/server_settings_sheet.dart';
 import 'beneficiary_list_screen.dart';
 import 'saved_visits_screen.dart';
+import 'supervisor_flagged_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.appState});
@@ -68,9 +69,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     widget.appState.clearProfile();
                   } else if (choice == 'server') {
                     showServerSettingsSheet(context, widget.appState);
+                  } else if (choice == 'supervisor') {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) =>
+                            SupervisorFlaggedScreen(appState: widget.appState),
+                      ),
+                    );
                   }
                 },
                 itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'supervisor',
+                    child: Text(strings.supervisorTitle),
+                  ),
                   PopupMenuItem(
                     value: 'server',
                     child: Text(strings.serverSettings),

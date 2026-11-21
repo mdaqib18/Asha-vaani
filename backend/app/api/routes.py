@@ -350,14 +350,20 @@ def confirm_visit(
 def list_visits(
     asha_id: str | None = Query(None),
     include_drafts: bool = Query(False),
+    flagged_only: bool = Query(False),
     store: VisitStore = Depends(get_store),
 ) -> list[VisitSummary]:
-    """List saved visits (and optionally drafts) for an ASHA worker."""
+    """List saved visits (and optionally drafts or flagged cases) for ASHA/supervisor view."""
     sessions = store.list_visits(asha_id=asha_id, saved_only=not include_drafts)
+    if flagged_only:
+        sessions = [
+            s for s in sessions if s.record.referral_suggested or bool(s.record.risk_flags)
+        ]
     return [
         VisitSummary(
             visit_id=s.visit_id,
             session_id=s.session_id,
+            asha_id=s.asha_id,
             beneficiary_id=s.record.beneficiary_id.value if s.record.beneficiary_id else None,
             visit_date=s.record.visit_date,
             risk_flags=s.record.risk_flags,

@@ -23,6 +23,9 @@ class FakeAshaApiClient implements AshaApiClient {
     Beneficiary(id: '1057', label: 'Baby of Lakshmi (synthetic)'),
   ];
   List<VisitSummary> savedVisits = const [];
+  List<VisitSummary> flaggedVisits = const [];
+  final Map<String, VisitDetail> visitDetailsBySession = {};
+  ApiException? flaggedVisitsError;
   VisitTurnResponse? nextUploadResponse;
   final List<VisitTurnResponse> followupResponses = [];
   RecordPatchResponse? nextPatchResponse;
@@ -117,6 +120,29 @@ class FakeAshaApiClient implements AshaApiClient {
   Future<List<VisitSummary>> getSavedVisits(String ashaId) async {
     if (savedVisitsError != null) throw savedVisitsError!;
     return savedVisits;
+  }
+
+  @override
+  Future<List<VisitSummary>> getFlaggedVisits() async {
+    if (flaggedVisitsError != null) throw flaggedVisitsError!;
+    return flaggedVisits;
+  }
+
+  @override
+  Future<VisitDetail> getVisitDetail(String sessionId) async {
+    final existing = visitDetailsBySession[sessionId];
+    if (existing != null) return existing;
+    return VisitDetail(
+      sessionId: sessionId,
+      status: 'saved',
+      record: const NewbornVisitRecord(
+        beneficiaryId: ExtractedField(value: '1043', source: 'selected'),
+        babyWeightKg: ExtractedField(value: 2.2),
+        temperatureC: ExtractedField(value: 37.8),
+        riskFlags: ['low_birth_weight', 'fever'],
+        referralSuggested: true,
+      ),
+    );
   }
 
   @override

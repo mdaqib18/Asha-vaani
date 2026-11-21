@@ -107,6 +107,7 @@ class VisitSummary(BaseModel):
 
     visit_id: str | None = None
     session_id: str
+    asha_id: str | None = None
     beneficiary_id: str | None = None
     visit_date: date | None = None
     risk_flags: list[str] = Field(default_factory=list)

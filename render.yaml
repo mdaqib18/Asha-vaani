@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: asha-vaani-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /v1/health
+    envVars:
+      - key: GNANI_API_KEY
+        sync: false
+      - key: GNANI_STT_URL
+        value: https://api.vachana.ai/stt/v3
+      - key: GNANI_TTS_URL
+        value: https://api.vachana.ai/api/v1/tts/inference
+      - key: GNANI_STT_MODEL
+        value: prisma-v3.0
+      - key: GNANI_STT_FORMAT
+        value: transcribe
+      - key: GNANI_TTS_MODEL
+        value: timbre-v3.0
+      - key: GNANI_TTS_VOICE
+        value: Lakshmi
+      - key: GNANI_TIMEOUT_S
+        value: "30.0"
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: gemini-3.5-flash-lite
+      - key: LLM_TIMEOUT_S
+        value: "30.0"
+      - key: DATABASE_URL
+        value: sqlite:///./ashavaani.db
+      - key: MAX_FOLLOWUPS
+        value: "2"

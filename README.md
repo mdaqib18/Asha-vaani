@@ -7,7 +7,9 @@ Voice-first Android companion for ASHA (community health) workers to record stru
 ```
 .
 ├── SPEC.md
-├── docs/                   # Gnani API notes and UI direction
+├── render.yaml             # Render deployment blueprint for backend API
+├── docs/                   # Gnani API notes, UI direction, demo & pitch script
+│   └── demo_and_pitch.md
 ├── backend/
 │   ├── app/
 │   │   ├── api/            # FastAPI endpoints
@@ -20,13 +22,14 @@ Voice-first Android companion for ASHA (community health) workers to record stru
 │   │   └── services/       # Normalizer, validator, risk rules, follow-up, Gnani STT/TTS, Gemini LLM, pipeline
 │   ├── scripts/            # CLI smoke checks (stt_check.py, tts_check.py, extract_check.py)
 │   ├── tests/
+│   ├── Procfile            # Production ASGI start command (Render/Railway)
 │   ├── requirements.txt
 │   └── .env.example
 ├── mobile/                 # Flutter Android app
 │   ├── lib/
 │   │   ├── l10n/           # Centralized EN / HI / KN strings
 │   │   ├── models/         # Dart mirrors of backend schemas
-│   │   ├── screens/        # Login, home, beneficiaries, record, review, saved visits
+│   │   ├── screens/        # Login, home, beneficiaries, record, review, saved visits, supervisor flagged view
 │   │   ├── services/       # Dio API client, 16 kHz WAV recorder, just_audio TTS player, SQLite & sync, prefs
 │   │   ├── state/          # AppState ChangeNotifier
 │   │   ├── theme/          # High-contrast Clinical Teal Material 3 theme
@@ -84,7 +87,18 @@ backend\.venv\Scripts\python.exe eval\run_eval.py --mode audio --subset-only --c
 - [x] **Milestone 6:** Follow-up loop in app (TTS question playback, auto-open mic, read-back audio)
 - [x] **Milestone 7:** Offline queue and sync
 - [x] **Milestone 8:** Evaluation run & noise tests
-- [ ] **Milestone 9:** Polish, demo video, pitch
+- [x] **Milestone 9:** Polish, demo video, pitch (+ ANM supervisor flagged-cases view)
+
+## Deploy & Android APK
+
+- **Backend (Render / Railway):** Use [render.yaml](render.yaml) or [backend/Procfile](backend/Procfile); configure `GNANI_API_KEY` and `LLM_API_KEY` as secret env vars.
+- **Android Debug APK:**
+  ```powershell
+  cd mobile
+  flutter build apk --debug
+  # Output: mobile\build\app\outputs\flutter-apk\app-debug.apk
+  ```
+- **Demo Script & Pitch Guide:** See [docs/demo_and_pitch.md](docs/demo_and_pitch.md).
 
 ## Open Questions & Decisions (from SPEC.md §18)
 

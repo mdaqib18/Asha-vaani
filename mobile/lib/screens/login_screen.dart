@@ -5,6 +5,7 @@ import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/language_toggle.dart';
 import '../widgets/server_settings_sheet.dart';
+import 'supervisor_flagged_screen.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key, required this.appState});
@@ -19,78 +20,126 @@ class LoginScreen extends StatelessWidget {
         final strings = appState.strings;
         return Scaffold(
           body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        onPressed: () => showServerSettingsSheet(context, appState),
-                        icon: const Icon(Icons.tune_rounded),
-                        tooltip: strings.serverSettings,
-                        color: AppColors.inkSecondary,
-                      ),
-                      LanguageToggle(
-                        selected: appState.language,
-                        onChanged: appState.setLanguage,
-                      ),
-                    ],
-                  ),
-                  const Spacer(flex: 1),
-                  Center(
-                    child: Container(
-                      width: 68,
-                      height: 68,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryTint,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Icon(
-                        Icons.graphic_eq_rounded,
-                        size: 36,
-                        color: AppColors.primary,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                IconButton(
+                                  onPressed: () =>
+                                      showServerSettingsSheet(context, appState),
+                                  icon: const Icon(Icons.tune_rounded),
+                                  tooltip: strings.serverSettings,
+                                  color: AppColors.inkSecondary,
+                                ),
+                                LanguageToggle(
+                                  selected: appState.language,
+                                  onChanged: appState.setLanguage,
+                                ),
+                              ],
+                            ),
+                            const Spacer(flex: 1),
+                            Center(
+                              child: Container(
+                                width: 68,
+                                height: 68,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryTint,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: const Icon(
+                                  Icons.graphic_eq_rounded,
+                                  size: 36,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            Text(
+                              strings.appTitle,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.inkPrimary,
+                                letterSpacing: -0.4,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              strings.appSubtitle,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            const SizedBox(height: 36),
+                            Text(
+                              strings.selectWorker,
+                              style: Theme.of(context).textTheme.labelMedium,
+                            ),
+                            const SizedBox(height: 12),
+                            ...AshaProfile.defaults.map((profile) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _WorkerCard(
+                                  profile: profile,
+                                  onTap: () => appState.selectProfile(profile),
+                                ),
+                              );
+                            }),
+                            const SizedBox(height: 4),
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => SupervisorFlaggedScreen(
+                                      appState: appState,
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(
+                                Icons.health_and_safety_outlined,
+                              ),
+                              label: Text(strings.openSupervisorView),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.primaryDark,
+                                side: const BorderSide(color: AppColors.border),
+                                minimumSize: const Size.fromHeight(48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                            const Spacer(flex: 2),
+                            const SizedBox(height: 12),
+                            Text(
+                              strings.demoConsentNotice,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: AppColors.inkSecondary),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  Text(
-                    strings.appTitle,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.inkPrimary,
-                      letterSpacing: -0.4,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    strings.appSubtitle,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 36),
-                  Text(
-                    strings.selectWorker,
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  ...AshaProfile.defaults.map((profile) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _WorkerCard(
-                        profile: profile,
-                        onTap: () => appState.selectProfile(profile),
-                      ),
-                    );
-                  }),
-                  const Spacer(flex: 2),
-                ],
-              ),
+                );
+              },
             ),
           ),
         );
