@@ -17,10 +17,14 @@ class RecordVisitScreen extends StatefulWidget {
     super.key,
     required this.appState,
     required this.beneficiary,
+    this.visitTypeCode = 'newborn_home_visit',
+    this.visitTypeLabel,
   });
 
   final AppState appState;
   final Beneficiary beneficiary;
+  final String visitTypeCode;
+  final String? visitTypeLabel;
 
   @override
   State<RecordVisitScreen> createState() => _RecordVisitScreenState();
@@ -194,6 +198,7 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
               ashaId: profile.id,
               beneficiaryId: widget.beneficiary.id,
               sessionId: _activeSessionId,
+              visitType: widget.visitTypeCode,
             );
       _cleanupTempFile(filePath);
       if (!mounted) return;
@@ -208,6 +213,7 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
             ashaId: profile.id,
             beneficiary: widget.beneficiary,
             language: widget.appState.language.code,
+            visitType: widget.visitTypeCode,
           );
           if (!mounted) return;
           setState(() {
@@ -405,9 +411,22 @@ class _RecordVisitScreenState extends State<RecordVisitScreen> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              widget.beneficiary.label,
-                              style: Theme.of(context).textTheme.titleMedium,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.beneficiary.label,
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                                if (widget.visitTypeLabel != null &&
+                                    widget.visitTypeLabel!.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${strings.visitPurposeChipLabel}: ${widget.visitTypeLabel!}',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                         ],

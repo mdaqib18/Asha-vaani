@@ -1,5 +1,24 @@
 # TODO(verify): thresholds and required fields against official HBNC guidance / ASHA worker / ANM.
 visit_type: newborn_home_visit
+code: newborn_home_visit
+schema_version: 1
+active: true
+
+name:
+  en: "Newborn home visit"
+  hi: "नवजात गृह भेंट"
+  kn: "ನವಜಾತ ಮನೆ ಭೇಟಿ"
+
+description:
+  en: "Postnatal newborn weight, temperature, feeding, cord, jaundice and breathing check."
+  hi: "नवजात का वजन, तापमान, स्तनपान, नाल, पीलिया और सांस की जांच।"
+  kn: "ನವಜಾತ ಶಿಶುವಿನ ತೂಕ, ತಾಪಮಾನ, ಎದೆಹಾಲು, ಹೊಕ್ಕಳುಬಳ್ಳಿ, ಕಾಮಾಲೆ ಮತ್ತು ಉಸಿರಾಟ ಪರಿಶೀಲನೆ."
+
+applies_to:
+  - newborn
+
+due_rule:
+  schedule_days: [3, 7, 14, 21, 28, 42]
 
 required_fields:
   - beneficiary_id
@@ -9,6 +28,19 @@ required_fields:
   - cord_status
   - jaundice
   - limb_abnormality
+
+fields:
+  - {key: beneficiary_id, type: string, required: true}
+  - {key: baby_weight_kg, type: float, required: true, min: 0.5, max: 6.0, unit: kg}
+  - {key: temperature_c, type: float, required: true, min: 34.0, max: 41.0, unit: C}
+  - {key: breastfeeding, type: enum, required: true}
+  - {key: cord_status, type: enum, required: true}
+  - {key: jaundice, type: bool, required: true}
+  - {key: breathing_rate_per_min, type: int, required: false, min: 20, max: 100, unit: /min}
+  - {key: limb_abnormality, type: object, required: true}
+  - {key: danger_signs, type: list, required: false}
+  - {key: mother_notes, type: string, required: false}
+  - {key: notes, type: string, required: false}
 
 ranges:
   baby_weight_kg:
@@ -27,6 +59,12 @@ risk_thresholds:
   hypothermia_c_below: 35.5
   fast_breathing_above: 60
 
+risk_rules:
+  - {id: low_weight, when: "baby_weight_kg < 2.5", flag: low_birth_weight, severity: high}
+  - {id: high_temp, when: "temperature_c >= 37.5", flag: fever, severity: high}
+  - {id: low_temp, when: "temperature_c < 35.5", flag: hypothermia, severity: high}
+  - {id: fast_breathing, when: "breathing_rate_per_min > 60", flag: fast_breathing, severity: high}
+
 # TODO(verify): confirm which risk flags trigger referral_suggested per HBNC guidelines.
 high_risk_flags:
   - low_birth_weight
@@ -44,3 +82,19 @@ confirm_always:
   - beneficiary_id
   - baby_weight_kg
   - temperature_c
+
+followup_templates:
+  missing_required:
+    en: "Please share the missing newborn details."
+    hi: "कृपया बच्चे की बाकी जानकारी बताएं।"
+    kn: "ದಯವಿಟ್ಟು ಶಿಶುವಿನ ಉಳಿದ ವಿವರಗಳನ್ನು ಹೇಳಿ."
+
+voice_keywords:
+  - newborn home visit
+  - newborn
+  - hbnc
+  - baby weight
+  - नवजात
+  - नाल
+  - ನವಜಾತ
+  - ಶಿಶು

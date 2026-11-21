@@ -9,7 +9,7 @@ from datetime import date
 import httpx
 from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
 
-from app.core.config_loader import load_visit_config
+from app.core.config_loader import VisitTypeConfig, list_visit_configs, load_visit_config
 from app.core.errors import ApiError
 from app.core.settings import Settings, get_settings
 from app.data.beneficiaries import (
@@ -20,16 +20,20 @@ from app.data.beneficiaries import (
 from app.db.store import StoredSession, VisitStore, get_store
 from app.schemas.api import (
     ConfirmResponse,
+    DetectedPurposeOut,
     LoginRequest,
     LoginResponse,
     ReadbackResponse,
     RecordPatchRequest,
     RecordPatchResponse,
+    SuggestedPurposeResponse,
     SyncItemRequest,
     SyncItemResult,
     SyncResponse,
     VisitSummary,
     VisitTurnResponse,
+    VisitTypeFieldOut,
+    VisitTypeOut,
     WorkerProfile,
 )
 from app.schemas.newborn_visit import ExtractedField, FieldSource
@@ -42,6 +46,7 @@ from app.services.followup import (
 )
 from app.services.gnani_common import LANGUAGE_MAP
 from app.services.pipeline import process_audio
+from app.services.purpose_engine import suggest_visit_purpose
 from app.services.tts_gnani import TTS_CONTENT_TYPE
 
 router = APIRouter(prefix="/v1")
@@ -109,6 +114,8 @@ async def _run_visit_turn(
         client=http_client,
     )
 
+    cfg_schema_version = load_visit_config(session.visit_type).schema_version
+
     if not result.transcript.strip() and prev_snapshot == result.record.model_dump(mode="json"):
         session.status = "error_retry"
         session.language = language
@@ -123,6 +130,8 @@ async def _run_visit_turn(
             referral_suggested=result.record.referral_suggested,
             status="error_retry",
             followup=None,
+            visit_type_code=session.visit_type,
+            schema_version=cfg_schema_version,
         )
 
     combined_ambiguities = list(session.ambiguities)
@@ -186,6 +195,8 @@ async def _run_visit_turn(
         referral_suggested=result.record.referral_suggested,
         status=decision.status,
         followup=followup_payload,
+        visit_type_code=session.visit_type,
+        schema_version=cfg_schema_version,
     )
 
 
@@ -193,6 +204,78 @@ async def _run_visit_turn(
 def health() -> dict[str, str]:
     """Liveness check."""
     return {"status": "ok"}
+
+
+def _to_visit_type_out(cfg: VisitTypeConfig) -> VisitTypeOut:
+    return VisitTypeOut(
+        code=cfg.effective_code,
+        schema_version=cfg.schema_version,
+        name=cfg.name or {"en": cfg.effective_code},
+        description=cfg.description,
+        applies_to=cfg.applies_to,
+        required_fields=cfg.required_fields,
+        fields=[VisitTypeFieldOut(**f.model_dump()) for f in cfg.fields],
+        voice_keywords=cfg.voice_keywords,
+        active=cfg.active,
+    )
+
+
+@router.get("/visit-types", response_model=list[VisitTypeOut])
+def list_visit_types(
+    beneficiary_type: str | None = Query(None),
+) -> list[VisitTypeOut]:
+    """Return active visit purpose definitions from the YAML registry (SPEC_V2 §4.1, §9)."""
+    configs = list_visit_configs(active_only=True)
+    if beneficiary_type:
+        btype = beneficiary_type.strip().lower()
+        configs = [c for c in configs if not c.applies_to or btype in c.applies_to]
+    return [_to_visit_type_out(c) for c in configs]
+
+
+@router.get(
+    "/beneficiaries/{beneficiary_id}/suggested-purpose",
+    response_model=SuggestedPurposeResponse,
+)
+def get_suggested_purpose(
+    beneficiary_id: str,
+    beneficiary_type: str | None = Query(None),
+    dob: str | None = Query(None),
+    last_visit_at: str | None = Query(None),
+    spoken_hint: str | None = Query(None),
+) -> SuggestedPurposeResponse:
+    """Suggest the primary visit purpose for a beneficiary plus valid alternatives."""
+    parsed_dob: date | None = None
+    parsed_last: date | None = None
+    try:
+        if dob:
+            parsed_dob = date.fromisoformat(dob[:10])
+        if last_visit_at:
+            parsed_last = date.fromisoformat(last_visit_at[:10])
+    except ValueError as exc:
+        raise ApiError("INVALID_DATE", f"Invalid ISO date format: {exc}", 400) from exc
+
+    resolved_type = (beneficiary_type or "newborn").strip().lower()
+    suggestion = suggest_visit_purpose(
+        beneficiary_type=resolved_type,
+        dob=parsed_dob,
+        last_visit_at=parsed_last,
+        spoken_hint=spoken_hint,
+    )
+    return SuggestedPurposeResponse(
+        beneficiary_id=beneficiary_id,
+        suggested_code=suggestion.suggested_code,
+        reason=suggestion.reason,
+        other_codes=suggestion.other_codes,
+        detected_purpose=(
+            DetectedPurposeOut(
+                code=suggestion.detected_purpose.code,
+                confidence=suggestion.detected_purpose.confidence,
+                matched_keyword=suggestion.detected_purpose.matched_keyword,
+            )
+            if suggestion.detected_purpose is not None
+            else None
+        ),
+    )
 
 
 @router.get("/beneficiaries")

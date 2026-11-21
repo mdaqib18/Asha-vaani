@@ -6,6 +6,7 @@ import 'package:asha_vaani/l10n/app_strings.dart';
 import 'package:asha_vaani/models/beneficiary.dart';
 import 'package:asha_vaani/models/newborn_visit.dart';
 import 'package:asha_vaani/models/v2_models.dart';
+import 'package:asha_vaani/models/visit_type.dart';
 import 'package:asha_vaani/services/api_client.dart';
 import 'package:asha_vaani/services/audio_player_service.dart';
 import 'package:asha_vaani/services/audio_recorder_service.dart';
@@ -17,6 +18,8 @@ import 'package:asha_vaani/state/app_state.dart';
 class FakeAshaApiClient implements AshaApiClient {
   bool healthy = true;
   ApiException? loginError;
+  ApiException? visitTypesError;
+  ApiException? suggestedPurposeError;
   ApiException? beneficiariesError;
   ApiException? uploadError;
   ApiException? savedVisitsError;
@@ -67,6 +70,31 @@ class FakeAshaApiClient implements AshaApiClient {
       throw const ApiException('INVALID_CREDENTIALS', 'Invalid worker code or PIN.', 401);
     }
     return LoginResult(token: 'fake-session-token', profile: matched.first);
+  }
+
+  @override
+  Future<List<VisitTypeSummary>> getVisitTypes({String? beneficiaryType}) async {
+    if (visitTypesError != null) throw visitTypesError!;
+    final btype = beneficiaryType?.trim().toLowerCase();
+    return BuiltInVisitTypes.all
+        .where((v) => btype == null || btype.isEmpty || v.appliesTo.contains(btype))
+        .toList();
+  }
+
+  @override
+  Future<SuggestedPurposeResult> getSuggestedPurpose(
+    String beneficiaryId, {
+    String? beneficiaryType,
+    String? dob,
+    String? spokenHint,
+  }) async {
+    if (suggestedPurposeError != null) throw suggestedPurposeError!;
+    return BuiltInVisitTypes.suggestForBeneficiary(
+      beneficiaryId: beneficiaryId,
+      beneficiaryType: beneficiaryType ?? 'newborn',
+      dobIso: dob,
+      spokenHint: spokenHint,
+    );
   }
 
   @override

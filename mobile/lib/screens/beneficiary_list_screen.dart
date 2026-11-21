@@ -4,7 +4,7 @@ import '../models/beneficiary.dart';
 import '../services/api_client.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
-import 'record_visit_screen.dart';
+import 'visit_purpose_picker_screen.dart';
 
 class BeneficiaryListScreen extends StatefulWidget {
   const BeneficiaryListScreen({
@@ -98,7 +98,7 @@ class _BeneficiaryListScreenState extends State<BeneficiaryListScreen> {
   Future<void> _openVisit(Beneficiary beneficiary) async {
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
-        builder: (_) => RecordVisitScreen(
+        builder: (_) => VisitPurposePickerScreen(
           appState: widget.appState,
           beneficiary: beneficiary,
         ),

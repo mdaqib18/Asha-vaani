@@ -1,0 +1,95 @@
+# TODO(verify): verify ANC schedule interval, anemia cutoffs, and referral triggers with ANM / NHM guidance.
+visit_type: anc_visit
+code: anc_visit
+schema_version: 1
+active: true
+
+name:
+  en: "Antenatal check (ANC)"
+  hi: "प्रसव पूर्व जांच (ANC)"
+  kn: "ಗರ್ಭಿಣಿ ತಪಾಸಣೆ (ANC)"
+
+description:
+  en: "Pregnancy check for gestation weeks, weight, BP, Hb, IFA tablets and danger signs."
+  hi: "गर्भावस्था के सप्ताह, वजन, बीपी, हीमोग्लोबिन, आयरन गोली और खतरे के लक्षण की जांच।"
+  kn: "ಗರ್ಭಾವಸ್ಥೆಯ ವಾರಗಳು, ತೂಕ, ಬಿಪಿ, ಹಿಮೋಗ್ಲೋಬಿನ್, ಐಎಫ್‌ಎ ಮಾತ್ರೆ ಮತ್ತು ಅಪಾಯದ ಚಿಹ್ನೆಗಳ ಪರಿಶೀಲನೆ."
+
+applies_to:
+  - pregnant_woman
+
+due_rule:
+  interval_days: 30
+
+required_fields:
+  - beneficiary_id
+  - gestation_weeks
+  - bp_systolic
+  - bp_diastolic
+
+fields:
+  - {key: beneficiary_id, type: string, required: true}
+  - {key: gestation_weeks, type: int, required: true, min: 4, max: 42, unit: weeks}
+  - {key: weight_kg, type: float, required: false, min: 25.0, max: 150.0, unit: kg}
+  - {key: bp_systolic, type: int, required: true, min: 60, max: 260, unit: mmHg}
+  - {key: bp_diastolic, type: int, required: true, min: 30, max: 160, unit: mmHg}
+  - {key: hb_g_dl, type: float, required: false, min: 3.0, max: 18.0, unit: g/dL}
+  - {key: ifa_tablets_taken, type: int, required: false, min: 0, max: 300, unit: tablets}
+  - {key: tt_td_status, type: enum, required: false}
+  - {key: swelling, type: bool, required: false}
+  - {key: bleeding, type: bool, required: false}
+  - {key: danger_signs, type: list, required: false}
+  - {key: notes, type: string, required: false}
+
+ranges:
+  gestation_weeks:
+    min: 4
+    max: 42
+  weight_kg:
+    min: 25.0
+    max: 150.0
+  bp_systolic:
+    min: 60
+    max: 260
+  bp_diastolic:
+    min: 30
+    max: 160
+  hb_g_dl:
+    min: 3.0
+    max: 18.0
+  ifa_tablets_taken:
+    min: 0
+    max: 300
+
+risk_rules:
+  - {id: high_bp, when: "bp_systolic >= 140 or bp_diastolic >= 90", flag: high_blood_pressure, severity: high}
+  - {id: severe_anemia, when: "hb_g_dl < 7.0", flag: severe_anemia, severity: high}
+  - {id: mild_anemia, when: "hb_g_dl >= 7.0 and hb_g_dl < 11.0", flag: anaemia, severity: watch}
+  - {id: bleeding_flag, when: "bleeding == true", flag: vaginal_bleeding, severity: high}
+  - {id: swelling_flag, when: "swelling == true", flag: oedema_swelling, severity: watch}
+
+high_risk_flags:
+  - high_blood_pressure
+  - severe_anemia
+  - vaginal_bleeding
+  - danger_signs_present
+
+confirm_always:
+  - beneficiary_id
+  - bp_systolic
+  - bp_diastolic
+
+followup_templates:
+  missing_required:
+    en: "Please share pregnancy weeks and blood pressure reading."
+    hi: "कृपया गर्भावस्था के सप्ताह और ब्लड प्रेशर बताएं।"
+    kn: "ದಯವಿಟ್ಟು ಗರ್ಭಾವಸ್ಥೆಯ ವಾರಗಳು ಮತ್ತು ರಕ್ತದೊತ್ತಡವನ್ನು ತಿಳಿಸಿ."
+
+voice_keywords:
+  - anc check
+  - antenatal
+  - pregnancy check
+  - pregnant
+  - garbhavati
+  - गर्भवती
+  - प्रसव पूर्व
+  - ಗರ್ಭಿಣಿ

@@ -1,0 +1,83 @@
+# TODO(verify): verify NCD hypertension and random blood sugar referral cutoffs with NP-NCD / ANM guidance.
+visit_type: ncd_screening
+code: ncd_screening
+schema_version: 1
+active: true
+
+name:
+  en: "NCD screening (BP & Sugar)"
+  hi: "बीपी और शुगर जांच (NCD)"
+  kn: "ಬಿಪಿ ಮತ್ತು ಸಕ್ಕರೆ ತಪಾಸಣೆ (NCD)"
+
+description:
+  en: "Adult check for blood pressure, random blood sugar, symptoms and tobacco use."
+  hi: "वयस्कों के ब्लड प्रेशर, ब्लड शुगर, लक्षण और तंबाकू उपयोग की जांच।"
+  kn: "ವಯಸ್ಕರಿಗೆ ರಕ್ತದೊತ್ತಡ, ರಕ್ತದ ಸಕ್ಕರೆ, ಲಕ್ಷಣಗಳು ಮತ್ತು ತಂಬಾಕು ಬಳಕೆ ಪರಿಶೀಲನೆ."
+
+applies_to:
+  - adult
+  - other
+
+due_rule:
+  interval_days: 90
+
+required_fields:
+  - beneficiary_id
+  - bp_systolic
+  - bp_diastolic
+
+fields:
+  - {key: beneficiary_id, type: string, required: true}
+  - {key: bp_systolic, type: int, required: true, min: 60, max: 260, unit: mmHg}
+  - {key: bp_diastolic, type: int, required: true, min: 30, max: 160, unit: mmHg}
+  - {key: random_blood_sugar_mg_dl, type: float, required: false, min: 30.0, max: 650.0, unit: mg/dL}
+  - {key: symptoms, type: string, required: false}
+  - {key: tobacco_use, type: bool, required: false}
+  - {key: notes, type: string, required: false}
+
+ranges:
+  bp_systolic:
+    min: 60
+    max: 260
+  bp_diastolic:
+    min: 30
+    max: 160
+  random_blood_sugar_mg_dl:
+    min: 30.0
+    max: 650.0
+
+risk_rules:
+  - {id: high_bp, when: "bp_systolic >= 140 or bp_diastolic >= 90", flag: high_blood_pressure, severity: high}
+  - {id: high_sugar, when: "random_blood_sugar_mg_dl >= 200", flag: high_blood_sugar, severity: high}
+  - {id: borderline_sugar, when: "random_blood_sugar_mg_dl >= 140 and random_blood_sugar_mg_dl < 200", flag: borderline_blood_sugar, severity: watch}
+
+high_risk_flags:
+  - high_blood_pressure
+  - high_blood_sugar
+
+confirm_always:
+  - beneficiary_id
+  - bp_systolic
+  - bp_diastolic
+  - random_blood_sugar_mg_dl
+
+followup_templates:
+  missing_required:
+    en: "Please share the systolic and diastolic blood pressure values."
+    hi: "कृपया सिस्टोलिक और डायस्टोलिक ब्लड प्रेशर बताएं।"
+    kn: "ದಯವಿಟ್ಟು ಸಿಸ್ಟೋಲಿಕ್ ಮತ್ತು ಡಯಾಸ್ಟೋಲಿಕ್ ರಕ್ತದೊತ್ತಡವನ್ನು ತಿಳಿಸಿ."
+
+voice_keywords:
+  - ncd screening
+  - blood pressure
+  - bp check
+  - sugar check
+  - blood sugar
+  - diabetes
+  - ncd
+  - बीपी
+  - ब्लड प्रेशर
+  - शुगर
+  - ಬಿಪಿ
+  - ರಕ್ತದೊತ್ತಡ
+  - ಸಕ್ಕರೆ

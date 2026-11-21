@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 
 import '../models/beneficiary.dart';
 import '../models/newborn_visit.dart';
+import '../models/visit_type.dart';
 
 class ApiException implements Exception {
   const ApiException(this.code, [this.message, this.statusCode]);
@@ -20,6 +21,13 @@ abstract class AshaApiClient {
   String resolveAudioUrl(String pathOrUrl);
   Future<bool> checkHealth();
   Future<LoginResult> login({required String workerCode, required String pin});
+  Future<List<VisitTypeSummary>> getVisitTypes({String? beneficiaryType});
+  Future<SuggestedPurposeResult> getSuggestedPurpose(
+    String beneficiaryId, {
+    String? beneficiaryType,
+    String? dob,
+    String? spokenHint,
+  });
   Future<List<Beneficiary>> getBeneficiaries(String ashaId);
   Future<VisitTurnResponse> uploadVisitAudio({
     required String filePath,
@@ -122,6 +130,50 @@ class DioAshaApiClient implements AshaApiClient {
         data: {'worker_code': workerCode.trim(), 'pin': pin.trim()},
       );
       return LoginResult.fromJson(resp.data ?? const {});
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  @override
+  Future<List<VisitTypeSummary>> getVisitTypes({String? beneficiaryType}) async {
+    try {
+      final resp = await _dio.get<List<dynamic>>(
+        '/v1/visit-types',
+        queryParameters: {
+          if (beneficiaryType != null && beneficiaryType.isNotEmpty)
+            'beneficiary_type': beneficiaryType,
+        },
+      );
+      final items = resp.data ?? const [];
+      return items
+          .whereType<Map<String, dynamic>>()
+          .map(VisitTypeSummary.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  @override
+  Future<SuggestedPurposeResult> getSuggestedPurpose(
+    String beneficiaryId, {
+    String? beneficiaryType,
+    String? dob,
+    String? spokenHint,
+  }) async {
+    try {
+      final resp = await _dio.get<Map<String, dynamic>>(
+        '/v1/beneficiaries/$beneficiaryId/suggested-purpose',
+        queryParameters: {
+          if (beneficiaryType != null && beneficiaryType.isNotEmpty)
+            'beneficiary_type': beneficiaryType,
+          if (dob != null && dob.isNotEmpty) 'dob': dob,
+          if (spokenHint != null && spokenHint.isNotEmpty)
+            'spoken_hint': spokenHint,
+        },
+      );
+      return SuggestedPurposeResult.fromJson(resp.data ?? const {});
     } on DioException catch (e) {
       throw _mapError(e);
     }

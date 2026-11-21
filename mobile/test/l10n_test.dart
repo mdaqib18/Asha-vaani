@@ -78,6 +78,17 @@ void main() {
       expect(s.highContrastLabel.trim(), isNotEmpty);
       expect(s.privacyAndDataTitle.trim(), isNotEmpty);
       expect(s.signOutAction.trim(), isNotEmpty);
+      expect(s.selectVisitPurposeTitle.trim(), isNotEmpty);
+      expect(s.suggestedPurposeLabel.trim(), isNotEmpty);
+      expect(s.otherPurposesTitle.trim(), isNotEmpty);
+      expect(s.continueWithPurposeAction.trim(), isNotEmpty);
+      expect(s.purposeVoiceHintLabel.trim(), isNotEmpty);
+      expect(s.purposeVoiceHintPlaceholder.trim(), isNotEmpty);
+      expect(s.detectedPurposeBanner('ANC').trim(), isNotEmpty);
+      expect(s.switchPurposeAction('ANC').trim(), isNotEmpty);
+      expect(s.offlineRegistryNotice.trim(), isNotEmpty);
+      expect(s.noMatchingPurposesTitle.trim(), isNotEmpty);
+      expect(s.visitPurposeChipLabel.trim(), isNotEmpty);
       expect(s.friendlyError('INVALID_CREDENTIALS').trim(), isNotEmpty);
       expect(s.friendlyError('OFFLINE_FIRST_LOGIN').trim(), isNotEmpty);
       expect(s.friendlyError('NETWORK_ERROR').trim(), isNotEmpty);

@@ -1,0 +1,80 @@
+# TODO(verify): verify fever duration and temperature referral cutoffs with ANM / MO.
+visit_type: general_illness
+code: general_illness
+schema_version: 1
+active: true
+
+name:
+  en: "General illness check"
+  hi: "सामान्य बीमारी जांच"
+  kn: "ಸಾಮಾನ್ಯ ಅನಾರೋಗ್ಯ ತಪಾಸಣೆ"
+
+description:
+  en: "Symptoms, fever duration, temperature, care given and referral check for any beneficiary."
+  hi: "किसी भी व्यक्ति के लक्षण, बुखार के दिन, तापमान, देखभाल और रेफरल की जांच।"
+  kn: "ಯಾವುದೇ ವ್ಯಕ್ತಿಯ ಲಕ್ಷಣಗಳು, ಜ್ವರದ ದಿನಗಳು, ತಾಪಮಾನ, ಆರೈಕೆ ಮತ್ತು ರೆಫರಲ್ ಪರಿಶೀಲನೆ."
+
+applies_to:
+  - newborn
+  - pregnant_woman
+  - pnc_mother
+  - child_u5
+  - adult
+  - other
+
+due_rule:
+  interval_days: 3
+
+required_fields:
+  - beneficiary_id
+  - symptoms
+  - temperature_c
+
+fields:
+  - {key: beneficiary_id, type: string, required: true}
+  - {key: symptoms, type: string, required: true}
+  - {key: duration_days, type: int, required: false, min: 0, max: 365, unit: days}
+  - {key: temperature_c, type: float, required: true, min: 34.0, max: 43.0, unit: C}
+  - {key: action_taken, type: string, required: false}
+  - {key: danger_signs, type: list, required: false}
+  - {key: notes, type: string, required: false}
+
+ranges:
+  temperature_c:
+    min: 34.0
+    max: 43.0
+  duration_days:
+    min: 0
+    max: 365
+
+risk_rules:
+  - {id: high_fever, when: "temperature_c >= 38.0", flag: fever, severity: high}
+  - {id: persistent_fever, when: "duration_days > 3 and temperature_c >= 37.5", flag: persistent_fever, severity: high}
+
+high_risk_flags:
+  - fever
+  - persistent_fever
+  - danger_signs_present
+
+confirm_always:
+  - beneficiary_id
+  - temperature_c
+
+followup_templates:
+  missing_required:
+    en: "Please share symptoms and body temperature."
+    hi: "कृपया मुख्य लक्षण और शरीर का तापमान बताएं।"
+    kn: "ದಯವಿಟ್ಟು ಲಕ್ಷಣಗಳು ಮತ್ತು ದೇಹದ ತಾಪಮಾನವನ್ನು ಹೇಳಿ."
+
+voice_keywords:
+  - general illness
+  - illness
+  - fever
+  - cough
+  - sick
+  - bukhar
+  - बुखार
+  - बीमारी
+  - ಜ್ವರ
+  - ಕೆಮ್ಮು
+  - ಅನಾರೋಗ್ಯ

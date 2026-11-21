@@ -6,9 +6,9 @@ import '../services/api_client.dart';
 import '../state/app_state.dart';
 import '../ui/ui.dart';
 import '../widgets/language_toggle.dart';
-import 'record_visit_screen.dart';
 import 'saved_visits_screen.dart';
 import 'supervisor_flagged_screen.dart';
+import 'visit_purpose_picker_screen.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({
@@ -124,7 +124,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   Future<void> _startVisitFor(Beneficiary beneficiary) async {
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
-        builder: (_) => RecordVisitScreen(
+        builder: (_) => VisitPurposePickerScreen(
           appState: widget.appState,
           beneficiary: beneficiary,
         ),

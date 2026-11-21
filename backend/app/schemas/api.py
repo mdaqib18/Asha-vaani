@@ -30,6 +30,8 @@ class VisitTurnResponse(BaseModel):
     referral_suggested: bool = False
     status: Literal["needs_followup", "ready_to_confirm", "error_retry"]
     followup: FollowupPayload | None = None
+    visit_type_code: str = "newborn_home_visit"
+    schema_version: int = 1
 
 
 class RecordPatchRequest(BaseModel):
@@ -137,3 +139,46 @@ class LoginResponse(BaseModel):
 
     token: str
     worker: WorkerProfile
+
+
+class VisitTypeFieldOut(BaseModel):
+    """Public field schema descriptor exposed by GET /v1/visit-types."""
+
+    key: str
+    type: str
+    required: bool = False
+    min: float | None = None
+    max: float | None = None
+    unit: str | None = None
+
+
+class VisitTypeOut(BaseModel):
+    """Visit purpose metadata served by GET /v1/visit-types (SPEC_V2 §4.1, §9)."""
+
+    code: str
+    schema_version: int
+    name: dict[str, str]
+    description: dict[str, str]
+    applies_to: list[str]
+    required_fields: list[str]
+    fields: list[VisitTypeFieldOut] = Field(default_factory=list)
+    voice_keywords: list[str] = Field(default_factory=list)
+    active: bool = True
+
+
+class DetectedPurposeOut(BaseModel):
+    """Detected visit purpose from a spoken hint phrase."""
+
+    code: str
+    confidence: float
+    matched_keyword: str
+
+
+class SuggestedPurposeResponse(BaseModel):
+    """Response for GET /v1/beneficiaries/{id}/suggested-purpose."""
+
+    beneficiary_id: str
+    suggested_code: str
+    reason: dict[str, str]
+    other_codes: list[str]
+    detected_purpose: DetectedPurposeOut | None = None

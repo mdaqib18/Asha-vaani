@@ -260,6 +260,63 @@ class AppStrings {
         kn: '$count ಬಾಕಿ',
       );
 
+  // Visit Purpose Picker (V2 §3.6, §4)
+  String get selectVisitPurposeTitle => _pick(
+        en: 'Select visit purpose',
+        hi: 'भेंट का उद्देश्य चुनें',
+        kn: 'ಭೇಟಿಯ ಉದ್ದೇಶವನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+      );
+  String get suggestedPurposeLabel => _pick(
+        en: 'Suggested visit',
+        hi: 'सुझाया गया उद्देश्य',
+        kn: 'ಸೂಚಿಸಲಾದ ಭೇಟಿ',
+      );
+  String get otherPurposesTitle => _pick(
+        en: 'Other visit purposes',
+        hi: 'अन्य भेंट प्रकार',
+        kn: 'ಇತರ ಭೇಟಿ ಉದ್ದೇಶಗಳು',
+      );
+  String get continueWithPurposeAction => _pick(
+        en: 'Continue',
+        hi: 'आगे बढ़ें',
+        kn: 'ಮುಂದುವರಿಯಿರಿ',
+      );
+  String get purposeVoiceHintLabel => _pick(
+        en: 'Or say / type what check this is (e.g. BP check, fever)',
+        hi: 'या बोलें / लिखें यह कौन सी जांच है (जैसे BP check, बुखार)',
+        kn: 'ಅಥವಾ ಯಾವ ತಪಾಸಣೆ ಎಂದು ಹೇಳಿ / ಟೈಪ್ ಮಾಡಿ (ಉದಾ. BP check, ಜ್ವರ)',
+      );
+  String get purposeVoiceHintPlaceholder => _pick(
+        en: 'e.g. BP check, ANC, fever',
+        hi: 'जैसे BP check, ANC, बुखार',
+        kn: 'ಉದಾ. BP check, ANC, ಜ್ವರ',
+      );
+  String detectedPurposeBanner(String purposeName) => _pick(
+        en: 'Matched "$purposeName" from your note',
+        hi: 'आपकी बात से "$purposeName" पहचाना गया',
+        kn: 'ನಿಮ್ಮ ಮಾಹಿತಿಯಿಂದ "$purposeName" ಗುರುತಿಸಲಾಗಿದೆ',
+      );
+  String switchPurposeAction(String purposeName) => _pick(
+        en: 'Use $purposeName',
+        hi: '$purposeName चुनें',
+        kn: '$purposeName ಬಳಸಿ',
+      );
+  String get offlineRegistryNotice => _pick(
+        en: 'Offline mode — showing built-in visit types',
+        hi: 'ऑफ़लाइन — सहेजे गए भेंट प्रकार दिख रहे हैं',
+        kn: 'ಆಫ್‌ಲೈನ್ — ಉಳಿಸಿದ ಭೇಟಿ ಪ್ರಕಾರಗಳನ್ನು ತೋರಿಸಲಾಗುತ್ತಿದೆ',
+      );
+  String get noMatchingPurposesTitle => _pick(
+        en: 'No visit purposes available',
+        hi: 'कोई भेंट उद्देश्य उपलब्ध नहीं है',
+        kn: 'ಯಾವುದೇ ಭೇಟಿ ಉದ್ದೇಶಗಳು ಲಭ್ಯವಿಲ್ಲ',
+      );
+  String get visitPurposeChipLabel => _pick(
+        en: 'Purpose',
+        hi: 'उद्देश्य',
+        kn: 'ಉದ್ದೇಶ',
+      );
+
   // Insights & Settings (V2 §3.9, §3.10)
   String get insightsTitle => _pick(
         en: 'Insights',
