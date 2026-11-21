@@ -7,14 +7,16 @@ Voice-first Android companion for ASHA (community health) workers to record stru
 ```
 .
 ├── SPEC.md
+├── docs/                   # Gnani API notes and UI direction
 ├── backend/
 │   ├── app/
 │   │   ├── api/            # FastAPI endpoints
 │   │   ├── config/         # Visit type YAML thresholds & rules
-│   │   ├── core/           # Settings and YAML config loader
+│   │   ├── core/           # Settings, API error envelope, YAML loader
 │   │   ├── data/           # Synthetic beneficiary data
 │   │   ├── schemas/        # Pydantic v2 models
-│   │   └── services/       # Normalizer, validator, risk rules, STT/TTS stubs
+│   │   └── services/       # Normalizer, validator, risk rules, Gnani STT/TTS
+│   ├── scripts/            # CLI smoke checks (stt_check.py, tts_check.py)
 │   ├── tests/
 │   ├── requirements.txt
 │   └── .env.example
@@ -43,18 +45,18 @@ Check health: `GET http://127.0.0.1:8000/v1/health`
 ## Milestone Status
 
 - [x] **Milestone 1:** Backend skeleton, schema, config, normalizer, validator, risk rules + unit tests
-- [ ] **Milestone 2:** Gnani Prisma STT integration
-- [ ] **Milestone 3:** LLM extraction + validation
-- [ ] **Milestone 4:** Follow-up engine + Gnani Timbre TTS
+- [x] **Milestone 2:** Gnani Prisma STT (+ Timbre TTS client) — client done, live test pending
+- [ ] **Milestone 3:** Gemini LLM extraction + validation
+- [ ] **Milestone 4:** Follow-up engine + Gnani Timbre TTS wiring
 - [ ] **Milestone 5:** Flutter app (beneficiary list, record, upload, review)
 - [ ] **Milestone 6:** Follow-up loop in app
 - [ ] **Milestone 7:** Offline queue and sync
 - [ ] **Milestone 8:** Evaluation run & noise tests
 - [ ] **Milestone 9:** Polish, demo video, pitch
 
-## Open Questions (from SPEC.md §18)
+## Open Questions & Decisions (from SPEC.md §18)
 
-- Exact Gnani STT/TTS endpoints, auth, audio formats, languages, and credit limits (**TODO(verify)**)
-- Whether the LLM is required to be a Gnani model for this hackathon (**TODO(verify)**)
+- Gnani Prisma STT & Timbre TTS endpoints, auth, formats, and Hindi/Kannada support verified in [docs/gnani_api_notes.md](docs/gnani_api_notes.md); live credit limits & code-mixed STT accuracy pending API key test
+- LLM provider decided: **Gemini** (`LLM_PROVIDER=gemini` for Milestone 3)
 - Final field list and thresholds validated by an ASHA worker/ANM (**TODO(verify)**)
-- Kannada and Hindi support quality on code-mixed speech
+- Kannada and Hindi support quality on code-mixed speech (evaluate once live key is set)

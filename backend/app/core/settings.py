@@ -6,8 +6,13 @@ class Settings(BaseSettings):
     """Application environment configuration loaded from .env."""
 
     GNANI_API_KEY: str | None = None
-    GNANI_STT_URL: str | None = None
-    GNANI_TTS_URL: str | None = None
+    GNANI_STT_URL: str = "https://api.vachana.ai/stt/v3"
+    GNANI_TTS_URL: str = "https://api.vachana.ai/api/v1/tts/inference"
+    GNANI_STT_MODEL: str = "prisma-v3.0"
+    GNANI_STT_FORMAT: str = "transcribe"
+    GNANI_TTS_MODEL: str = "timbre-v3.0"
+    GNANI_TTS_VOICE: str = "Lakshmi"
+    GNANI_TIMEOUT_S: float = 30.0
     LLM_PROVIDER: str | None = None
     LLM_API_KEY: str | None = None
     LLM_MODEL: str | None = None
