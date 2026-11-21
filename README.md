@@ -47,7 +47,7 @@ Check health: `GET http://127.0.0.1:8000/v1/health`
 
 - [x] **Milestone 1:** Backend skeleton, schema, config, normalizer, validator, risk rules + unit tests
 - [x] **Milestone 2:** Gnani Prisma STT (+ Timbre TTS client) — live verified
-- [x] **Milestone 3:** Gemini LLM extraction + validation — implemented & unit-tested (107 passing); live Gemini check blocked on AI Studio `402` billing
+- [x] **Milestone 3:** Gemini LLM extraction + validation — live verified (LLM_MODEL from .env, tested on gemini-3.5-flash)
 - [ ] **Milestone 4:** Follow-up engine + Gnani Timbre TTS wiring
 - [ ] **Milestone 5:** Flutter app (beneficiary list, record, upload, review)
 - [ ] **Milestone 6:** Follow-up loop in app

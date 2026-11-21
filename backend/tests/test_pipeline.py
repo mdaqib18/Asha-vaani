@@ -12,7 +12,7 @@ def _settings() -> Settings:
         GNANI_API_KEY="test-gnani-key",
         LLM_PROVIDER="gemini",
         LLM_API_KEY="test-gemini-key",
-        LLM_MODEL="gemini-2.5-flash",
+        LLM_MODEL="gemini-3.5-flash",
     )
 
 

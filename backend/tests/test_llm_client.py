@@ -13,7 +13,7 @@ def _settings(**overrides) -> Settings:
     defaults = {
         "LLM_PROVIDER": "gemini",
         "LLM_API_KEY": "test-gemini-key",
-        "LLM_MODEL": "gemini-2.5-flash",
+        "LLM_MODEL": "gemini-3.5-flash",
     }
     defaults.update(overrides)
     return Settings(**defaults)
@@ -45,14 +45,14 @@ def test_generate_json_gemini_request_and_response() -> None:
 
     res = asyncio.run(_run())
     assert res.text == '{"ok": true}'
-    assert res.model == "gemini-2.5-flash"
+    assert res.model == "gemini-3.5-flash"
     assert res.latency_s >= 0.0
 
     assert len(captured) == 1
     req = captured[0]
     assert (
         str(req.url)
-        == "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+        == "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent"
     )
     assert "test-gemini-key" not in str(req.url)
     assert req.headers["x-goog-api-key"] == "test-gemini-key"
@@ -190,6 +190,32 @@ def test_generate_json_missing_key_skips_http() -> None:
     assert calls == 0
     assert exc_info.value.code == "LLM_NOT_CONFIGURED"
     assert exc_info.value.http_status == 503
+
+
+def test_generate_json_missing_model_skips_http() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return _gemini_ok([{"text": "{}"}])
+
+    for bad_model in (None, "", "   "):
+        async def _run(m=bad_model):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                await generate_json(
+                    "sys",
+                    "usr",
+                    settings=_settings(LLM_MODEL=m),
+                    client=client,
+                    retry_delay_s=0,
+                )
+
+        with pytest.raises(ApiError) as exc_info:
+            asyncio.run(_run())
+        assert exc_info.value.code == "LLM_NOT_CONFIGURED"
+        assert exc_info.value.http_status == 503
+    assert calls == 0
 
 
 def test_generate_json_unsupported_provider_skips_http() -> None:

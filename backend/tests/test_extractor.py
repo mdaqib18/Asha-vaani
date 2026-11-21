@@ -18,7 +18,7 @@ from app.services.extractor import extract, merge_records
 
 
 def _settings() -> Settings:
-    return Settings(LLM_PROVIDER="gemini", LLM_API_KEY="test-key", LLM_MODEL="gemini-2.5-flash")
+    return Settings(LLM_PROVIDER="gemini", LLM_API_KEY="test-key", LLM_MODEL="gemini-3.5-flash")
 
 
 def _gemini_json_response(payload_text: str) -> httpx.Response:

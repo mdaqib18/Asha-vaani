@@ -1,5 +1,9 @@
 from functools import lru_cache
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -15,14 +19,14 @@ class Settings(BaseSettings):
     GNANI_TIMEOUT_S: float = 30.0
     LLM_PROVIDER: str = "gemini"
     LLM_API_KEY: str | None = None
-    LLM_MODEL: str = "gemini-2.5-flash"
+    LLM_MODEL: str | None = None
     LLM_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta"
     LLM_TIMEOUT_S: float = 30.0
     DATABASE_URL: str = "sqlite:///./ashavaani.db"
     MAX_FOLLOWUPS: int = 2
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILE,
         env_file_encoding="utf-8",
         extra="ignore",
     )

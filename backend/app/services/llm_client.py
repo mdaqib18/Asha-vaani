@@ -75,6 +75,13 @@ async def generate_json(
             503,
         )
 
+    if not cfg.LLM_MODEL or not cfg.LLM_MODEL.strip():
+        raise ApiError(
+            "LLM_NOT_CONFIGURED",
+            "LLM_MODEL is not configured in .env.",
+            503,
+        )
+
     provider = (cfg.LLM_PROVIDER or "").strip().lower()
     if provider != "gemini":
         raise ApiError(
@@ -83,7 +90,8 @@ async def generate_json(
             503,
         )
 
-    url = f"{cfg.LLM_BASE_URL.rstrip('/')}/models/{cfg.LLM_MODEL}:generateContent"
+    model_name = cfg.LLM_MODEL.strip()
+    url = f"{cfg.LLM_BASE_URL.rstrip('/')}/models/{model_name}:generateContent"
     headers = {
         "Content-Type": "application/json",
         "x-goog-api-key": cfg.LLM_API_KEY,
@@ -139,4 +147,4 @@ async def generate_json(
     if not text:
         raise ApiError("LLM_FAILED", "LLM returned an empty response.", 502)
 
-    return LlmResponse(text=text, model=cfg.LLM_MODEL, latency_s=latency_s)
+    return LlmResponse(text=text, model=model_name, latency_s=latency_s)
