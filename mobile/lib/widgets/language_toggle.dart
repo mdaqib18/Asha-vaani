@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_strings.dart';
-import '../theme/app_theme.dart';
+import '../theme/tokens.dart';
 
 class LanguageToggle extends StatelessWidget {
   const LanguageToggle({
@@ -15,33 +15,54 @@ class LanguageToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = AppTokens.of(context);
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+
     return Container(
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(AppSpacing.xs),
       decoration: BoxDecoration(
-        color: AppColors.surfaceSubtle,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        color: tokens.surfaceRaised,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(
+          color: tokens.outline,
+          width: AppSizes.borderWidth,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: AppLanguage.values.map((lang) {
           final isSelected = lang == selected;
-          return GestureDetector(
-            key: ValueKey('lang_${lang.code}'),
-            onTap: () => onChanged(lang),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                lang.shortLabel,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: isSelected ? Colors.white : AppColors.inkSecondary,
+          return Semantics(
+            button: true,
+            selected: isSelected,
+            label: lang.displayName,
+            child: InkWell(
+              key: ValueKey('lang_${lang.code}'),
+              onTap: () => onChanged(lang),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              child: AnimatedContainer(
+                duration: reduceMotion ? Duration.zero : AppMotion.fast,
+                curve: AppMotion.curve,
+                constraints: const BoxConstraints(
+                  minWidth: 40,
+                  minHeight: 40,
+                ),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected ? tokens.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Text(
+                  lang.shortLabel,
+                  style: AppTypography.label(
+                    isSelected ? Colors.white : tokens.inkMuted,
+                  ).copyWith(
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  ),
                 ),
               ),
             ),

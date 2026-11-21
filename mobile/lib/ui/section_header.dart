@@ -22,24 +22,32 @@ class SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = AppTokens.of(context);
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Column(
+    return SizedBox(
+      width: double.infinity,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.xs,
+        children: [
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(title, style: AppTypography.heading(tokens.ink)),
               if (subtitle != null && subtitle!.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.xs),
-                Text(subtitle!, style: AppTypography.labelRegular(tokens.inkMuted)),
+                Text(
+                  subtitle!,
+                  style: AppTypography.labelRegular(tokens.inkMuted),
+                ),
               ],
             ],
           ),
-        ),
-        if (actionLabel != null && onAction != null)
-          TextAction(label: actionLabel!, onPressed: onAction),
-      ],
+          if (actionLabel != null && onAction != null)
+            TextAction(label: actionLabel!, onPressed: onAction),
+        ],
+      ),
     );
   }
 }

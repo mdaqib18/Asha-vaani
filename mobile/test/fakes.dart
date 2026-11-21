@@ -13,6 +13,7 @@ import 'package:asha_vaani/state/app_state.dart';
 
 class FakeAshaApiClient implements AshaApiClient {
   bool healthy = true;
+  ApiException? loginError;
   ApiException? beneficiariesError;
   ApiException? uploadError;
   ApiException? savedVisitsError;
@@ -50,6 +51,20 @@ class FakeAshaApiClient implements AshaApiClient {
 
   @override
   Future<bool> checkHealth() async => healthy;
+
+  @override
+  Future<LoginResult> login({
+    required String workerCode,
+    required String pin,
+  }) async {
+    if (loginError != null) throw loginError!;
+    final code = workerCode.trim().toLowerCase();
+    final matched = AshaProfile.defaults.where((p) => p.id == code).toList();
+    if (matched.isEmpty || pin.trim() != '1234') {
+      throw const ApiException('INVALID_CREDENTIALS', 'Invalid worker code or PIN.', 401);
+    }
+    return LoginResult(token: 'fake-session-token', profile: matched.first);
+  }
 
   @override
   Future<List<Beneficiary>> getBeneficiaries(String ashaId) async {
@@ -349,6 +364,8 @@ AppState makeTestAppState({
   FakeConnectivityMonitor? connectivity,
   AppLanguage initialLanguage = AppLanguage.en,
   AshaProfile? initialProfile,
+  bool? initialLocked,
+  bool? initialHighContrast,
 }) {
   final db = localDb ?? FakeLocalDbService();
   final conn = connectivity ?? FakeConnectivityMonitor();
@@ -370,5 +387,7 @@ AppState makeTestAppState({
     syncService: sync,
     initialLanguage: initialLanguage,
     initialProfile: initialProfile,
+    initialLocked: initialLocked,
+    initialHighContrast: initialHighContrast,
   );
 }

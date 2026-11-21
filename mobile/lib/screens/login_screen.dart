@@ -1,208 +1,334 @@
 import 'package:flutter/material.dart';
 
 import '../models/beneficiary.dart';
+import '../services/api_client.dart';
 import '../state/app_state.dart';
-import '../theme/app_theme.dart';
+import '../ui/ui.dart';
 import '../widgets/language_toggle.dart';
 import '../widgets/server_settings_sheet.dart';
 import 'supervisor_flagged_screen.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.appState});
 
   final AppState appState;
 
   @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  late final TextEditingController _codeController;
+  final TextEditingController _pinController = TextEditingController();
+  bool _submitting = false;
+  String? _errorText;
+  bool _allowSwitchAccount = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final savedCode = widget.appState.lastProfile?.id ??
+        widget.appState.selectedProfile?.id ??
+        AshaProfile.defaults.first.id;
+    _codeController = TextEditingController(text: savedCode);
+  }
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    _pinController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_submitting) return;
+    setState(() {
+      _submitting = true;
+      _errorText = null;
+    });
+
+    try {
+      await widget.appState.signInWithPin(
+        workerCode: _codeController.text,
+        pin: _pinController.text,
+      );
+      if (mounted) {
+        _pinController.clear();
+      }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorText = widget.appState.strings.friendlyError(e.code, e.message);
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
+    }
+  }
+
+  void _selectDemoWorker(AshaProfile profile) {
+    setState(() {
+      _codeController.text = profile.id;
+      _errorText = null;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: appState,
+      listenable: widget.appState,
       builder: (context, _) {
-        final strings = appState.strings;
-        return Scaffold(
-          body: SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                    child: IntrinsicHeight(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 16,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                IconButton(
-                                  onPressed: () =>
-                                      showServerSettingsSheet(context, appState),
-                                  icon: const Icon(Icons.tune_rounded),
-                                  tooltip: strings.serverSettings,
-                                  color: AppColors.inkSecondary,
+        final strings = widget.appState.strings;
+        final tokens = AppTokens.of(context);
+        final lockedProfile =
+            widget.appState.isLocked && !_allowSwitchAccount
+                ? widget.appState.lastProfile
+                : null;
+
+        return AppScaffold(
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight - AppSpacing.xl,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            alignment: WrapAlignment.spaceBetween,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: AppSpacing.sm,
+                            runSpacing: AppSpacing.sm,
+                            children: [
+                              IconButton(
+                                onPressed: () => showServerSettingsSheet(
+                                  context,
+                                  widget.appState,
                                 ),
-                                LanguageToggle(
-                                  selected: appState.language,
-                                  onChanged: appState.setLanguage,
+                                icon: Icon(
+                                  Icons.tune_rounded,
+                                  size: AppSizes.icon,
+                                  color: tokens.inkMuted,
                                 ),
-                              ],
-                            ),
-                            const Spacer(flex: 1),
-                            Center(
-                              child: Container(
-                                width: 68,
-                                height: 68,
+                                tooltip: strings.serverSettings,
+                                constraints: const BoxConstraints(
+                                  minWidth: AppSizes.minTouchTarget,
+                                  minHeight: AppSizes.minTouchTarget,
+                                ),
+                              ),
+                              LanguageToggle(
+                                selected: widget.appState.language,
+                                onChanged: widget.appState.setLanguage,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.xl),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: AppSizes.minTouchTarget,
+                                height: AppSizes.minTouchTarget,
                                 decoration: BoxDecoration(
-                                  color: AppColors.primaryTint,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: AppColors.border),
+                                  color: tokens.primaryContainer,
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.card),
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.graphic_eq_rounded,
-                                  size: 36,
-                                  color: AppColors.primary,
+                                  size: AppSizes.icon,
+                                  color: tokens.primary,
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 18),
-                            Text(
-                              strings.appTitle,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.inkPrimary,
-                                letterSpacing: -0.4,
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      strings.appTitle,
+                                      style: AppTypography.display(tokens.ink),
+                                    ),
+                                    Text(
+                                      strings.appSubtitle,
+                                      style: AppTypography.labelRegular(
+                                        tokens.inkMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          SecurityChip(
+                            label: widget.appState.hasOfflineCredentials
+                                ? strings.pinLockOfflineChip
+                                : strings.pinLockChip,
+                          ),
+                          const SizedBox(height: AppSpacing.xl),
+                          if (lockedProfile != null) ...[
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              decoration: BoxDecoration(
+                                color: tokens.surfaceRaised,
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.card),
+                                border: Border.all(
+                                  color: tokens.outline,
+                                  width: AppSizes.borderWidth,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          lockedProfile.name,
+                                          style: AppTypography.bodySemiBold(
+                                            tokens.ink,
+                                          ),
+                                        ),
+                                        Text(
+                                          '${lockedProfile.id} · ${lockedProfile.area}',
+                                          style: AppTypography.labelRegular(
+                                            tokens.inkMuted,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  TextAction(
+                                    label: strings.switchAccountAction,
+                                    onPressed: () {
+                                      setState(() {
+                                        _allowSwitchAccount = true;
+                                        _errorText = null;
+                                      });
+                                    },
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: AppSpacing.lg),
+                          ] else ...[
                             Text(
-                              strings.appSubtitle,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyMedium,
+                              strings.workerCodeLabel,
+                              style: AppTypography.label(tokens.ink),
                             ),
-                            const SizedBox(height: 36),
-                            Text(
-                              strings.selectWorker,
-                              style: Theme.of(context).textTheme.labelMedium,
+                            const SizedBox(height: AppSpacing.xs),
+                            TextField(
+                              key: const ValueKey('worker_code_field'),
+                              controller: _codeController,
+                              textInputAction: TextInputAction.next,
+                              autocorrect: false,
+                              decoration: InputDecoration(
+                                hintText: strings.workerCodeHint,
+                              ),
                             ),
-                            const SizedBox(height: 12),
-                            ...AshaProfile.defaults.map((profile) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _WorkerCard(
-                                  profile: profile,
-                                  onTap: () => appState.selectProfile(profile),
-                                ),
-                              );
-                            }),
-                            const SizedBox(height: 4),
-                            OutlinedButton.icon(
+                            const SizedBox(height: AppSpacing.sm),
+                            Wrap(
+                              spacing: AppSpacing.sm,
+                              runSpacing: AppSpacing.xs,
+                              children: AshaProfile.defaults.map((profile) {
+                                final selected =
+                                    _codeController.text.trim() == profile.id;
+                                return ChoiceChip(
+                                  label: Text(
+                                    '${profile.name} (${profile.id})',
+                                    style: AppTypography.labelRegular(
+                                      selected ? tokens.primary : tokens.ink,
+                                    ),
+                                  ),
+                                  selected: selected,
+                                  selectedColor: tokens.primaryContainer,
+                                  backgroundColor: tokens.surfaceRaised,
+                                  side: BorderSide(color: tokens.outline),
+                                  onSelected: (_) => _selectDemoWorker(profile),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                          ],
+                          Text(
+                            strings.pinLabel,
+                            style: AppTypography.label(tokens.ink),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          TextField(
+                            key: const ValueKey('pin_field'),
+                            controller: _pinController,
+                            obscureText: true,
+                            keyboardType: TextInputType.number,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => _submit(),
+                            decoration: InputDecoration(
+                              hintText: strings.pinHint,
+                              errorText: _errorText,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          PrimaryButton(
+                            label: lockedProfile != null
+                                ? strings.unlockAction
+                                : strings.signInAction,
+                            icon: Icons.lock_open_rounded,
+                            loading: _submitting,
+                            onPressed: _submit,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            strings.demoPinHint,
+                            style: AppTypography.caption(tokens.inkMuted),
+                          ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.xl),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextAction(
+                              label: strings.openSupervisorView,
+                              icon: Icons.health_and_safety_outlined,
                               onPressed: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute<void>(
                                     builder: (_) => SupervisorFlaggedScreen(
-                                      appState: appState,
+                                      appState: widget.appState,
                                     ),
                                   ),
                                 );
                               },
-                              icon: const Icon(
-                                Icons.health_and_safety_outlined,
-                              ),
-                              label: Text(strings.openSupervisorView),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.primaryDark,
-                                side: const BorderSide(color: AppColors.border),
-                                minimumSize: const Size.fromHeight(48),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
                             ),
-                            const Spacer(flex: 2),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: AppSpacing.xs),
                             Text(
                               strings.demoConsentNotice,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(color: AppColors.inkSecondary),
+                              style: AppTypography.caption(tokens.inkMuted),
                             ),
                           ],
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
         );
       },
-    );
-  }
-}
-
-class _WorkerCard extends StatelessWidget {
-  const _WorkerCard({required this.profile, required this.onTap});
-
-  final AshaProfile profile;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final initial = profile.name.isNotEmpty ? profile.name[0].toUpperCase() : 'A';
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: AppColors.primaryTint,
-                child: Text(
-                  initial,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryDark,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      profile.name,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${profile.id} · ${profile.area}',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 16,
-                color: AppColors.inkSecondary,
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

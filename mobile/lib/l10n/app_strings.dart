@@ -74,11 +74,26 @@ class AppStrings {
         kn: 'ಸರ್ವರ್ ಸಂಪರ್ಕ ಸಾಧ್ಯವಾಗಲಿಲ್ಲ',
       );
 
-  // Home Navigation
+  // Home Navigation (V2 4-tab shell)
+  String get homeTab => _pick(
+        en: 'Home',
+        hi: 'होम',
+        kn: 'ಮುಖಪುಟ',
+      );
   String get beneficiariesTab => _pick(
         en: 'Beneficiaries',
         hi: 'लाभार्थी',
         kn: 'ಫಲಾನುಭವಿಗಳು',
+      );
+  String get insightsTab => _pick(
+        en: 'Insights',
+        hi: 'आंकड़े',
+        kn: 'ಅಂಕಿಅಂಶ',
+      );
+  String get settingsTab => _pick(
+        en: 'Settings',
+        hi: 'सेटिंग्स',
+        kn: 'ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
       );
   String get savedVisitsTab => _pick(
         en: 'Saved Visits',
@@ -89,6 +104,247 @@ class AppStrings {
         en: 'Switch Worker',
         hi: 'कार्यकर्ता बदलें',
         kn: 'ಕಾರ್ಯಕರ್ತೆ ಬದಲಿಸಿ',
+      );
+
+  // Lock / Sign-In (V2 §3.1)
+  String get workerCodeLabel => _pick(
+        en: 'Worker code',
+        hi: 'कार्यकर्ता कोड',
+        kn: 'ಕಾರ್ಯಕರ್ತೆ ಕೋಡ್',
+      );
+  String get workerCodeHint => _pick(
+        en: 'e.g. asha_001',
+        hi: 'जैसे asha_001',
+        kn: 'ಉದಾ. asha_001',
+      );
+  String get pinLabel => _pick(
+        en: '4-digit PIN',
+        hi: '4 अंकों का पिन',
+        kn: '4 ಅಂಕಿಯ ಪಿನ್',
+      );
+  String get pinHint => _pick(
+        en: 'Enter PIN',
+        hi: 'पिन दर्ज करें',
+        kn: 'ಪಿನ್ ನಮೂದಿಸಿ',
+      );
+  String get signInAction => _pick(
+        en: 'Sign in',
+        hi: 'साइन इन करें',
+        kn: 'ಸೈನ್ ಇನ್ ಮಾಡಿ',
+      );
+  String get unlockAction => _pick(
+        en: 'Unlock',
+        hi: 'अनलॉक करें',
+        kn: 'ಅನ್‌ಲಾಕ್ ಮಾಡಿ',
+      );
+  String get pinLockChip => _pick(
+        en: 'PIN lock active',
+        hi: 'पिन लॉक सक्रिय',
+        kn: 'ಪಿನ್ ಲಾಕ್ ಸಕ್ರಿಯ',
+      );
+  String get pinLockOfflineChip => _pick(
+        en: 'PIN lock · Offline ready',
+        hi: 'पिन लॉक · ऑफ़लाइन तैयार',
+        kn: 'ಪಿನ್ ಲಾಕ್ · ಆಫ್‌ಲೈನ್ ಸಿದ್ಧ',
+      );
+  String get demoPinHint => _pick(
+        en: 'Demo accounts: asha_001, asha_002 (PIN 1234)',
+        hi: 'डेमो खाता: asha_001, asha_002 (पिन 1234)',
+        kn: 'ಡೆಮೊ ಖಾತೆ: asha_001, asha_002 (ಪಿನ್ 1234)',
+      );
+  String get switchAccountAction => _pick(
+        en: 'Use another account',
+        hi: 'दूसरा खाता चुनें',
+        kn: 'ಬೇರೆ ಖಾತೆ ಬಳಸಿ',
+      );
+  String get invalidCredentialsError => _pick(
+        en: 'Incorrect worker code or PIN.',
+        hi: 'कार्यकर्ता कोड या पिन गलत है।',
+        kn: 'ಕಾರ್ಯಕರ್ತೆ ಕೋಡ್ ಅಥವಾ ಪಿನ್ ತಪ್ಪಾಗಿದೆ.',
+      );
+  String get offlineFirstLoginError => _pick(
+        en: 'Connect to the backend server for first sign-in.',
+        hi: 'पहली बार साइन इन के लिए सर्वर से जुड़ें।',
+        kn: 'ಮೊದಲ ಬಾರಿ ಸೈನ್ ಇನ್ ಮಾಡಲು ಸರ್ವರ್‌ಗೆ ಸಂಪರ್ಕಿಸಿ.',
+      );
+  String get lockAppAction => _pick(
+        en: 'Lock app',
+        hi: 'ऐप लॉक करें',
+        kn: 'ಆ್ಯಪ್ ಲಾಕ್ ಮಾಡಿ',
+      );
+  String get signOutAction => _pick(
+        en: 'Sign out',
+        hi: 'साइन आउट',
+        kn: 'ಸೈನ್ ಔಟ್',
+      );
+  String get signOutConfirmTitle => _pick(
+        en: 'Sign out of this device?',
+        hi: 'इस फ़ोन से साइन आउट करें?',
+        kn: 'ಈ ಫೋನ್‌ನಿಂದ ಸೈನ್ ಔಟ್ ಮಾಡುವುದೇ?',
+      );
+  String get signOutConfirmMessage => _pick(
+        en: 'Next sign-in will require internet connection to verify your worker PIN.',
+        hi: 'अगली बार साइन इन करने के लिए इंटरनेट कनेक्शन की ज़रूरत होगी।',
+        kn: 'ಮುಂದಿನ ಬಾರಿ ಸೈನ್ ಇನ್ ಮಾಡಲು ಇಂಟರ್ನೆಟ್ ಸಂಪರ್ಕ ಬೇಕಾಗುತ್ತದೆ.',
+      );
+
+  // Home Dashboard (V2 §3.2)
+  String greeting(String name) => _pick(
+        en: 'Namaste, $name',
+        hi: 'नमस्ते, $name',
+        kn: 'ನಮಸ್ಕಾರ, $name',
+      );
+  String get dueTodayLabel => _pick(
+        en: 'Due today',
+        hi: 'आज बकाया',
+        kn: 'ಇಂದಿನ ಭೇಟಿ',
+      );
+  String get doneTodayLabel => _pick(
+        en: 'Done today',
+        hi: 'आज पूरे',
+        kn: 'ಇಂದು ಪೂರ್ಣ',
+      );
+  String get needsAttentionLabel => _pick(
+        en: 'Needs attention',
+        hi: 'ध्यान आवश्यक',
+        kn: 'ಗಮನ ಅಗತ್ಯ',
+      );
+  String get recordVisitAction => _pick(
+        en: 'Record visit',
+        hi: 'भेंट रिकॉर्ड करें',
+        kn: 'ಭೇಟಿ ದಾಖಲಿಸಿ',
+      );
+  String get dueAndOverdueTitle => _pick(
+        en: 'Due and overdue',
+        hi: 'बाकी और बकाया भेंट',
+        kn: 'ಬಾಕಿ ಇರುವ ಭೇಟಿಗಳು',
+      );
+  String get dueTodayStatus => _pick(
+        en: 'Due today',
+        hi: 'आज देय',
+        kn: 'ಇಂದು ಬಾಕಿ',
+      );
+  String get noVisitsDueTitle => _pick(
+        en: 'No visits pending right now',
+        hi: 'अभी कोई भेंट बाकी नहीं है',
+        kn: 'ಸದ್ಯಕ್ಕೆ ಯಾವುದೇ ಭೇಟಿ ಬಾಕಿ ಇಲ್ಲ',
+      );
+  String get noVisitsDueMessage => _pick(
+        en: 'All assigned beneficiaries can still be opened below or from the Beneficiaries tab.',
+        hi: 'आप लाभार्थी सूची खोलकर किसी भी बच्चे की भेंट रिकॉर्ड कर सकती हैं।',
+        kn: 'ನೀವು ಫಲಾನುಭವಿ ಪಟ್ಟಿಯಿಂದ ಯಾವುದೇ ಮಗುವಿನ ಭೇಟಿಯನ್ನು ದಾಖಲಿಸಬಹುದು.',
+      );
+  String get viewBeneficiariesAction => _pick(
+        en: 'Open beneficiaries',
+        hi: 'लाभार्थी खोलें',
+        kn: 'ಫಲಾನುಭವಿಗಳನ್ನು ತೆರೆಯಿರಿ',
+      );
+  String get chooseBeneficiaryTitle => _pick(
+        en: 'Choose beneficiary',
+        hi: 'लाभार्थी चुनें',
+        kn: 'ಫಲಾನುಭವಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+      );
+  String get syncedLabel => _pick(
+        en: 'Synced',
+        hi: 'सिंक है',
+        kn: 'ಸಿಂಕ್ ಆಗಿದೆ',
+      );
+  String get offlineLabel => _pick(
+        en: 'Offline',
+        hi: 'ऑफ़लाइन',
+        kn: 'ಆಫ್‌ಲೈನ್',
+      );
+  String pendingCountChip(int count) => _pick(
+        en: '$count pending',
+        hi: '$count बाकी',
+        kn: '$count ಬಾಕಿ',
+      );
+
+  // Insights & Settings (V2 §3.9, §3.10)
+  String get insightsTitle => _pick(
+        en: 'Insights',
+        hi: 'आंकड़े',
+        kn: 'ಅಂಕಿಅಂಶ',
+      );
+  String get insightsSummaryNote => _pick(
+        en: 'Measured from visits and queue stored on this device and server.',
+        hi: 'इस फ़ोन और सर्वर पर सहेजी गई भेंट से मापा गया।',
+        kn: 'ಈ ಫೋನ್ ಮತ್ತು ಸರ್ವರ್‌ನಲ್ಲಿ ಉಳಿಸಿದ ಭೇಟಿಗಳಿಂದ ಅಳೆಯಲಾಗಿದೆ.',
+      );
+  String get confirmedVisitsMetric => _pick(
+        en: 'Confirmed visits',
+        hi: 'सहेजे गए रिकॉर्ड',
+        kn: 'ದೃಢೀಕರಿಸಿದ ಭೇಟಿಗಳು',
+      );
+  String get highRiskMetric => _pick(
+        en: 'Flagged high risk',
+        hi: 'उच्च जोखिम मामले',
+        kn: 'ಹೆಚ್ಚಿನ ಅಪಾಯ ಪ್ರಕರಣಗಳು',
+      );
+  String get pendingSyncMetric => _pick(
+        en: 'Waiting to sync',
+        hi: 'सिंक के लिए बाकी',
+        kn: 'ಸಿಂಕ್‌ಗೆ ಬಾಕಿ',
+      );
+  String get openSavedVisitsAction => _pick(
+        en: 'Open saved visits & queue',
+        hi: 'सहेजे गए रिकॉर्ड और कतार खोलें',
+        kn: 'ಉಳಿಸಿದ ಭೇಟಿ ಮತ್ತು ಕ್ಯೂ ತೆರೆಯಿರಿ',
+      );
+  String get insightsComingNextTitle => _pick(
+        en: 'Charts arrive in the next update',
+        hi: 'चार्ट अगले चरण में जुड़ेंगे',
+        kn: 'ಚಾರ್ಟ್‌ಗಳು ಮುಂದಿನ ಹಂತದಲ್ಲಿ ಬರುತ್ತವೆ',
+      );
+  String get insightsComingNextBody => _pick(
+        en: 'Daily trends, purpose breakdowns, and period filters connect once local measurement storage is active.',
+        hi: 'स्थानीय माप तालिका बनने के बाद दैनिक रुझान और फ़िल्टर यहां दिखेंगे।',
+        kn: 'ಸ್ಥಳೀಯ ಅಳತೆ ಸಂಗ್ರಹ ಸಿದ್ಧವಾದ ನಂತರ ದೈನಂದಿನ ವಿವರಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ.',
+      );
+  String get settingsTitle => _pick(
+        en: 'Settings & Privacy',
+        hi: 'सेटिंग्स और गोपनीयता',
+        kn: 'ಸೆಟ್ಟಿಂಗ್‌ಗಳು ಮತ್ತು ಗೌಪ್ಯತೆ',
+      );
+  String signedInAs(String name, String id) => _pick(
+        en: 'Signed in as $name ($id)',
+        hi: '$name ($id) के रूप में लॉग इन',
+        kn: '$name ($id) ಆಗಿ ಸೈನ್ ಇನ್ ಆಗಿದೆ',
+      );
+  String get highContrastLabel => _pick(
+        en: 'High contrast mode',
+        hi: 'उच्च कंट्रास्ट मोड',
+        kn: 'ಹೈ ಕಾಂಟ್ರಾಸ್ಟ್ ಮೋಡ್',
+      );
+  String get highContrastSubtitle => _pick(
+        en: 'Stronger borders and dark text for bright outdoor sunlight',
+        hi: 'बाहर तेज़ धूप में साफ़ पढ़ने के लिए गहरे रंग और बॉर्डर',
+        kn: 'ಹೊರಗಿನ ಬಿಸಿಲಿನಲ್ಲಿ ಸ್ಪಷ್ಟವಾಗಿ ಕಾಣಲು ಗಾಢ ಬಣ್ಣ ಮತ್ತು ಬಾರ್ಡರ್',
+      );
+  String get languageSectionLabel => _pick(
+        en: 'App & speech language',
+        hi: 'ऐप और बोलने की भाषा',
+        kn: 'ಆ್ಯಪ್ ಮತ್ತು ಮಾತಿನ ಭಾಷೆ',
+      );
+  String get syncAndQueueLabel => _pick(
+        en: 'Saved visits & sync queue',
+        hi: 'सहेजे गए रिकॉर्ड और सिंक कतार',
+        kn: 'ಉಳಿಸಿದ ಭೇಟಿಗಳು ಮತ್ತು ಸಿಂಕ್ ಕ್ಯೂ',
+      );
+  String get privacyAndDataTitle => _pick(
+        en: 'Privacy & data',
+        hi: 'गोपनीयता और डेटा',
+        kn: 'ಗೌಪ್ಯತೆ ಮತ್ತು ಡೇಟಾ',
+      );
+  String get privacySummaryBody => _pick(
+        en: 'Audio recordings are queued locally when offline and sent over your configured server connection to extract newborn visit fields. Provider API keys remain only on the backend server. Only synthetic demo records are used in this build.',
+        hi: 'ऑफ़लाइन होने पर ऑडियो फ़ोन में सुरक्षित कतार में रहता है और नेटवर्क आने पर सर्वर को भेजा जाता है। सभी API कुंजियां केवल सर्वर पर रहती हैं। इस संस्करण में केवल कृत्रिम डेमो डेटा है।',
+        kn: 'ಆಫ್‌ಲೈನ್ ಇದ್ದಾಗ ಆಡಿಯೋ ಫೋನಿನಲ್ಲಿ ಸಂಗ್ರಹವಾಗಿ, ನೆಟ್‌ವರ್ಕ್ ಬಂದಾಗ ಸರ್ವರ್‌ಗೆ ಕಳುಹಿಸಲಾಗುತ್ತದೆ. API ಕೀಗಳು ಸರ್ವರ್‌ನಲ್ಲಿ ಮಾತ್ರ ಇರುತ್ತವೆ. ಈ ಆವೃತ್ತಿಯಲ್ಲಿ ಕೇವಲ ಕೃತಕ ಡೆಮೊ ಡೇಟಾ ಇದೆ.',
+      );
+  String get openUiGalleryLabel => _pick(
+        en: 'V2 design gallery',
+        hi: 'V2 डिज़ाइन गैलरी',
+        kn: 'V2 ವಿನ್ಯಾಸ ಗ್ಯಾಲರಿ',
       );
 
   // Beneficiary List
@@ -500,6 +756,10 @@ class AppStrings {
 
   String friendlyError(String code, [String? serverMessage]) {
     switch (code) {
+      case 'INVALID_CREDENTIALS':
+        return invalidCredentialsError;
+      case 'OFFLINE_FIRST_LOGIN':
+        return offlineFirstLoginError;
       case 'NETWORK_ERROR':
         return _pick(
           en: 'Could not connect to server. Check Wi-Fi or server URL.',

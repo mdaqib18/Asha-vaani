@@ -6,7 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'fakes.dart';
 
 void main() {
-  testWidgets('login stub selects worker, switches languages, and searches beneficiaries',
+  testWidgets(
+      'PIN sign-in opens V2 Home, navigates to Beneficiaries, switches language, and searches',
       (tester) async {
     final fakeApi = FakeAshaApiClient();
     final appState = makeTestAppState(
@@ -17,16 +18,23 @@ void main() {
     await tester.pumpWidget(AshaVaaniApp(appState: appState));
     await tester.pumpAndSettle();
 
-    expect(find.text('Select ASHA Worker'), findsOneWidget);
-    expect(find.text('Sunita Devi'), findsOneWidget);
+    expect(find.text('Worker code'), findsOneWidget);
+    expect(find.text('PIN lock active'), findsOneWidget);
 
-    // Switch language to Hindi on login screen
+    // Switch language to Hindi on lock screen
     await tester.tap(find.byKey(const ValueKey('lang_hi')));
     await tester.pumpAndSettle();
-    expect(find.text('आशा कार्यकर्ता चुनें'), findsOneWidget);
+    expect(find.text('कार्यकर्ता कोड'), findsOneWidget);
 
-    // Select Sunita Devi -> enters HomeScreen with BeneficiaryListScreen
-    await tester.tap(find.text('Sunita Devi'));
+    // Enter valid demo PIN 1234 and sign in -> enters V2 Home dashboard
+    await tester.enterText(find.byKey(const ValueKey('pin_field')), '1234');
+    await tester.tap(find.text('साइन इन करें'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('नमस्ते, Sunita Devi'), findsOneWidget);
+
+    // Open Beneficiaries tab
+    await tester.tap(find.text('लाभार्थी'));
     await tester.pumpAndSettle();
 
     expect(find.text('1042'), findsOneWidget);
@@ -36,7 +44,7 @@ void main() {
     // Switch language to Kannada and verify tab label updates
     await tester.tap(find.byKey(const ValueKey('lang_kn')));
     await tester.pumpAndSettle();
-    expect(find.text('ಫಲಾನುಭವಿಗಳು'), findsOneWidget);
+    expect(find.text('ಫಲಾನುಭವಿಗಳು'), findsWidgets);
 
     // Filter beneficiary list by ID "1043"
     await tester.enterText(find.byType(TextField), '1043');

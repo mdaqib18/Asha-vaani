@@ -19,6 +19,7 @@ class ApiException implements Exception {
 abstract class AshaApiClient {
   String resolveAudioUrl(String pathOrUrl);
   Future<bool> checkHealth();
+  Future<LoginResult> login({required String workerCode, required String pin});
   Future<List<Beneficiary>> getBeneficiaries(String ashaId);
   Future<VisitTurnResponse> uploadVisitAudio({
     required String filePath,
@@ -107,6 +108,22 @@ class DioAshaApiClient implements AshaApiClient {
       return resp.statusCode == 200 && resp.data?['status'] == 'ok';
     } on DioException {
       return false;
+    }
+  }
+
+  @override
+  Future<LoginResult> login({
+    required String workerCode,
+    required String pin,
+  }) async {
+    try {
+      final resp = await _dio.post<Map<String, dynamic>>(
+        '/v1/auth/login',
+        data: {'worker_code': workerCode.trim(), 'pin': pin.trim()},
+      );
+      return LoginResult.fromJson(resp.data ?? const {});
+    } on DioException catch (e) {
+      throw _mapError(e);
     }
   }
 

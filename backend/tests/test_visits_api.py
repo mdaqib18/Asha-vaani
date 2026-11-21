@@ -386,3 +386,31 @@ def test_list_visits_flagged_only_filters_across_ashas(wired_api) -> None:
     by_id = {item["session_id"]: item for item in items}
     assert by_id["sess-flagged-1"]["asha_id"] == "asha_001"
     assert by_id["sess-flagged-2"]["asha_id"] == "asha_002"
+
+
+def test_auth_login_valid_and_invalid(wired_api) -> None:
+    client, _ = wired_api
+
+    ok_resp = client.post(
+        "/v1/auth/login",
+        json={"worker_code": "asha_001", "pin": "1234"},
+    )
+    assert ok_resp.status_code == 200
+    body = ok_resp.json()
+    assert isinstance(body["token"], str) and len(body["token"]) >= 20
+    assert body["worker"]["id"] == "asha_001"
+    assert body["worker"]["name"] == "Sunita Devi"
+
+    bad_pin = client.post(
+        "/v1/auth/login",
+        json={"worker_code": "asha_001", "pin": "0000"},
+    )
+    assert bad_pin.status_code == 401
+    assert bad_pin.json()["error"]["code"] == "INVALID_CREDENTIALS"
+
+    unknown_worker = client.post(
+        "/v1/auth/login",
+        json={"worker_code": "asha_999", "pin": "1234"},
+    )
+    assert unknown_worker.status_code == 401
+    assert unknown_worker.json()["error"]["code"] == "INVALID_CREDENTIALS"

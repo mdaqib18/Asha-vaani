@@ -26,22 +26,22 @@ class AshaVaaniApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Asha Vaani',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme(),
-      routes: {
-        '/gallery': (_) => const ComponentGalleryScreen(),
+    return ListenableBuilder(
+      listenable: appState,
+      builder: (context, _) {
+        final showLock = appState.selectedProfile == null || appState.isLocked;
+        return MaterialApp(
+          title: 'Asha Vaani',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme(highContrast: appState.highContrast),
+          routes: {
+            '/gallery': (_) => const ComponentGalleryScreen(),
+          },
+          home: showLock
+              ? LoginScreen(appState: appState)
+              : HomeScreen(appState: appState),
+        );
       },
-      home: ListenableBuilder(
-        listenable: appState,
-        builder: (context, _) {
-          if (appState.selectedProfile == null) {
-            return LoginScreen(appState: appState);
-          }
-          return HomeScreen(appState: appState);
-        },
-      ),
     );
   }
 }

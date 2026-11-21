@@ -114,3 +114,26 @@ class VisitSummary(BaseModel):
     referral_suggested: bool = False
     status: str
     updated_at: str
+
+
+class WorkerProfile(BaseModel):
+    """Authenticated ASHA worker profile returned by POST /v1/auth/login."""
+
+    id: str
+    worker_code: str
+    name: str
+    area: str
+
+
+class LoginRequest(BaseModel):
+    """Worker code + PIN login payload (SPEC_V2 §3.1, §9)."""
+
+    worker_code: str
+    pin: str
+
+
+class LoginResponse(BaseModel):
+    """Session token and worker profile issued on login."""
+
+    token: str
+    worker: WorkerProfile

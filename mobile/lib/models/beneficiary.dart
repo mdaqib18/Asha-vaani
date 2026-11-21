@@ -33,3 +33,22 @@ class AshaProfile {
     );
   }
 }
+
+class LoginResult {
+  const LoginResult({required this.token, required this.profile});
+
+  final String token;
+  final AshaProfile profile;
+
+  factory LoginResult.fromJson(Map<String, dynamic> json) {
+    final worker = json['worker'] as Map<String, dynamic>? ?? const {};
+    return LoginResult(
+      token: json['token']?.toString() ?? '',
+      profile: AshaProfile(
+        id: worker['id']?.toString() ?? '',
+        name: worker['name']?.toString() ?? '',
+        area: worker['area']?.toString() ?? '',
+      ),
+    );
+  }
+}
