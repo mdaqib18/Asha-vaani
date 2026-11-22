@@ -109,7 +109,11 @@ abstract class VisitStreamClient {
 
 class IoVisitStreamClient implements VisitStreamClient {
   static Uri buildStreamUri(String baseUrl) {
-    final parsed = Uri.parse(baseUrl.trim());
+    final trimmed = baseUrl.trim();
+    if (trimmed.isEmpty) {
+      throw ArgumentError('API_BASE_URL is not configured');
+    }
+    final parsed = Uri.parse(trimmed);
     final wsScheme = parsed.scheme == 'https' ? 'wss' : 'ws';
     final cleanPath = parsed.path.endsWith('/')
         ? parsed.path.substring(0, parsed.path.length - 1)

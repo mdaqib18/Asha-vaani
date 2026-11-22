@@ -83,7 +83,7 @@ class _ServerSettingsSheetState extends State<_ServerSettingsSheet> {
             keyboardType: TextInputType.url,
             decoration: InputDecoration(
               labelText: strings.backendUrlLabel,
-              hintText: 'http://10.0.2.2:8000',
+              hintText: 'https://your-domain.duckdns.org',
             ),
           ),
           if (_healthy != null) ...[

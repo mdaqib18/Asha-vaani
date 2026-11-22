@@ -5,6 +5,7 @@ import 'package:asha_vaani/models/beneficiary.dart';
 import 'package:asha_vaani/models/newborn_visit.dart';
 import 'package:asha_vaani/screens/record_visit_screen.dart';
 import 'package:asha_vaani/screens/review_confirm_screen.dart';
+import 'package:asha_vaani/services/prefs_service.dart';
 import 'package:asha_vaani/services/visit_stream_client.dart';
 import 'package:asha_vaani/services/wav_encoder.dart';
 import 'package:asha_vaani/theme/app_theme.dart';
@@ -47,14 +48,16 @@ void main() {
       expect(bd.getUint16(34, Endian.little), 16);
       expect(bd.getUint32(40, Endian.little), loudPcm.length);
 
+      expect(PrefsService.defaultBaseUrl, isEmpty);
       expect(
         IoVisitStreamClient.buildStreamUri('http://10.0.2.2:8000').toString(),
         'ws://10.0.2.2:8000/v1/stream',
       );
       expect(
-        IoVisitStreamClient.buildStreamUri('https://api.ashavaani.in/').toString(),
-        'wss://api.ashavaani.in/v1/stream',
+        IoVisitStreamClient.buildStreamUri('https://ashavaani.duckdns.org/').toString(),
+        'wss://ashavaani.duckdns.org/v1/stream',
       );
+      expect(() => IoVisitStreamClient.buildStreamUri(''), throwsArgumentError);
     },
   );
 

@@ -18,7 +18,10 @@ class PrefsService {
   static const String _keyBiometricEnabled = 'biometric_enabled';
   static const String _keyScreenshotProtection = 'screenshot_protection_enabled';
 
-  static const String defaultBaseUrl = 'http://10.0.2.2:8000';
+  static const String defaultBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: '',
+  );
 
   final SharedPreferences _prefs;
 
