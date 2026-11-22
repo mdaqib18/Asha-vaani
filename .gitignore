@@ -7,17 +7,24 @@ __pycache__/
 *.pyc
 .pytest_cache/
 *.db
+*.db-wal
+*.db-shm
+data/
+backend/data/
+backups/
 
 # Evaluation & Local Smoke Audio
 eval/audio/
 backend/*.mp3
 backend/*.wav
 
-# Flutter / IDE
+# Flutter / IDE / Release binaries
 mobile/build/
 mobile/.dart_tool/
 mobile/.packages
 mobile/.flutter-plugins
 mobile/.flutter-plugins-dependencies
+*.apk
+*.aab
 .idea/
 .vscode/

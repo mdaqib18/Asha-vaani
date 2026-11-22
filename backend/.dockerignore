@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.env
+*.db
+*.db-wal
+*.db-shm
+*.mp3
+*.wav
+data/
+tests/
