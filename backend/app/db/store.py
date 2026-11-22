@@ -63,9 +63,14 @@ class VisitStore:
         self._v2_engine: object | None = None
         self._v2_repo: object | None = None
         target = _resolve_sqlite_target(database_url)
-        self._conn = sqlite3.connect(target, check_same_thread=False)
+        self._conn = sqlite3.connect(target, check_same_thread=False, timeout=30.0)
         self._conn.row_factory = sqlite3.Row
         self._lock = threading.Lock()
+        with self._lock:
+            self._conn.execute("PRAGMA busy_timeout=5000")
+            if target != ":memory:":
+                self._conn.execute("PRAGMA journal_mode=WAL")
+                self._conn.execute("PRAGMA synchronous=NORMAL")
         self.init_db()
 
     def init_db(self) -> None:

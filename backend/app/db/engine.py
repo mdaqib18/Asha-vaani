@@ -6,7 +6,7 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import Engine, create_engine, event
+from sqlalchemy import Engine, create_engine, event, inspect
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -28,20 +28,26 @@ def normalize_database_url(database_url: str) -> str:
 
 
 def create_db_engine(database_url: str) -> Engine:
-    """Create a SQLAlchemy Engine with SQLite foreign-key enforcement."""
+    """Create a SQLAlchemy Engine with SQLite foreign-key, WAL mode, and busy-timeout pragmas."""
     normalized = normalize_database_url(database_url)
-    connect_args = {"check_same_thread": False} if normalized.startswith("sqlite") else {}
+    is_sqlite = normalized.startswith("sqlite")
+    is_memory = normalized == "sqlite:///:memory:"
+    connect_args = {"check_same_thread": False, "timeout": 30} if is_sqlite else {}
     kwargs: dict = {"future": True, "connect_args": connect_args}
-    if normalized == "sqlite:///:memory:":
+    if is_memory:
         kwargs["poolclass"] = StaticPool
     engine = create_engine(normalized, **kwargs)
 
-    if normalized.startswith("sqlite"):
+    if is_sqlite:
 
         @event.listens_for(engine, "connect")
-        def _enable_sqlite_fk(dbapi_connection, _connection_record) -> None:
+        def _configure_sqlite_pragmas(dbapi_connection, _connection_record) -> None:
             cursor = dbapi_connection.cursor()
             cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.execute("PRAGMA busy_timeout=5000")
+            if not is_memory:
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA synchronous=NORMAL")
             cursor.close()
 
     return engine
@@ -66,3 +72,23 @@ def run_alembic_migrations(database_url: str, revision: str = "head") -> None:
     """Upgrade the target database to the given Alembic revision."""
     cfg = build_alembic_config(database_url)
     command.upgrade(cfg, revision)
+
+
+def ensure_schema_ready(database_url: str) -> Engine:
+    """Run Alembic migrations for managed DBs and ensure SQLAlchemy tables exist."""
+    from app.db.models import Base
+
+    normalized = normalize_database_url(database_url)
+    probe = create_db_engine(normalized)
+    tables = set(inspect(probe).get_table_names())
+    should_migrate = normalized != "sqlite:///:memory:" and (
+        "alembic_version" in tables or "workers" not in tables
+    )
+    if should_migrate:
+        probe.dispose()
+        run_alembic_migrations(normalized, "head")
+        engine = create_db_engine(normalized)
+    else:
+        engine = probe
+    Base.metadata.create_all(engine)
+    return engine

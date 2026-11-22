@@ -20,11 +20,15 @@ from app.core.errors import ApiError
 _BEARER_RE = re.compile(r"(Bearer\s+)[A-Za-z0-9._~+/=-]+", re.IGNORECASE)
 _PHONE_RE = re.compile(r"(?<!\d)(?:\+?91[-\s]?)?[6-9]\d{9}(?!\d)")
 _TRANSCRIPT_JSON_RE = re.compile(
-    r'("(?:transcript|last_transcript|full_name|phone)"\s*:\s*)"[^"]*"',
+    r'("(?:transcript|last_transcript|full_name|phone|audio_path|file_path|temp_file_path)"\s*:\s*)"[^"]*"',
     re.IGNORECASE,
 )
 _TRANSCRIPT_KV_RE = re.compile(
-    r"\b(transcript|full_name|phone)=([^\s,;]+)",
+    r"\b(transcript|full_name|phone|audio_path|file_path|temp_file_path)=([^\s,;]+)",
+    re.IGNORECASE,
+)
+_AUDIO_FILE_PATH_RE = re.compile(
+    r"(?:[A-Za-z]:)?(?:[\\/][^\s\"'<>|]+)+\.(?:wav|mp3|m4a|pcm|ogg)\b|\b[\w.-]+\.(?:wav|mp3|m4a|pcm|ogg)\b",
     re.IGNORECASE,
 )
 
@@ -135,11 +139,12 @@ class RateLimiter:
 
 
 def redact_sensitive_text(text: str) -> str:
-    """Scrub Bearer tokens, phone numbers, and transcript/name fields from log text."""
+    """Scrub Bearer tokens, phone numbers, audio paths, and transcript/name fields from log text."""
     cleaned = _BEARER_RE.sub(r"\1[REDACTED]", text)
     cleaned = _PHONE_RE.sub("[PHONE_REDACTED]", cleaned)
     cleaned = _TRANSCRIPT_JSON_RE.sub(r'\1"[REDACTED]"', cleaned)
     cleaned = _TRANSCRIPT_KV_RE.sub(r"\1=[REDACTED]", cleaned)
+    cleaned = _AUDIO_FILE_PATH_RE.sub("[AUDIO_PATH_REDACTED]", cleaned)
     return cleaned
 
 

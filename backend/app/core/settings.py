@@ -23,9 +23,10 @@ class Settings(BaseSettings):
     LLM_MODEL: str | None = None
     LLM_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta"
     LLM_TIMEOUT_S: float = 30.0
-    DATABASE_URL: str = "sqlite:///./ashavaani.db"
+    DATABASE_URL: str = "sqlite:///./data/ashavaani.db"
     MAX_FOLLOWUPS: int = 2
     AUDIO_RETENTION_DAYS: int = 7
+    SEED_DEMO_DATA: bool = False
     SESSION_SECRET: str = "dev-ephemeral-session-secret-change-in-prod"
     SESSION_TTL_SECONDS: int = 86400
     RATE_LIMIT_PER_MINUTE: int = 120

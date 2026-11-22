@@ -1,13 +1,20 @@
+from contextlib import asynccontextmanager
 import logging
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import func, select
 
 from app.api.routes import router
 from app.core.errors import ApiError, register_error_handlers
 from app.core.security import PiiRedactingFilter, RateLimiter, verify_session_token
 from app.core.settings import get_settings
+from app.db.demo_seed import seed_demo_data
+from app.db.engine import ensure_schema_ready, make_session_factory
+from app.db.models import Beneficiary
+from app.db.repository import V2Repository
+from app.db.store import VisitStore
 
 _UNAUTHENTICATED_PATHS = frozenset({"/v1/health", "/v1/auth/login", "/docs", "/openapi.json"})
 _rate_limiter = RateLimiter()
@@ -19,7 +26,7 @@ def get_rate_limiter() -> RateLimiter:
 
 
 def _attach_log_redaction() -> None:
-    for logger_name in ("app", "uvicorn.access"):
+    for logger_name in ("app", "uvicorn", "uvicorn.access", "uvicorn.error"):
         logger = logging.getLogger(logger_name)
         if not any(isinstance(f, PiiRedactingFilter) for f in logger.filters):
             logger.addFilter(PiiRedactingFilter())
@@ -27,7 +34,31 @@ def _attach_log_redaction() -> None:
 
 _attach_log_redaction()
 
-app = FastAPI(title="Asha Vaani")
+
+@asynccontextmanager
+async def lifespan(app_instance: FastAPI):
+    """Run startup schema migrations and optional labeled demo data seeding."""
+    _attach_log_redaction()
+    settings_provider = app_instance.dependency_overrides.get(get_settings, get_settings)
+    settings = settings_provider()
+
+    VisitStore(settings.DATABASE_URL).close()
+    engine = ensure_schema_ready(settings.DATABASE_URL)
+    try:
+        session_factory = make_session_factory(engine)
+        if settings.SEED_DEMO_DATA:
+            with session_factory() as db:
+                beneficiary_count = db.scalar(select(func.count()).select_from(Beneficiary)) or 0
+            if beneficiary_count == 0:
+                repo = V2Repository(session_factory)
+                seed_demo_data(repo)
+    finally:
+        engine.dispose()
+
+    yield
+
+
+app = FastAPI(title="Asha Vaani", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
